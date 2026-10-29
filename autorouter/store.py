@@ -41,6 +41,14 @@ CREATE TABLE IF NOT EXISTS outcomes (
     cost        REAL
 );
 
+CREATE TABLE IF NOT EXISTS running (
+    id         TEXT PRIMARY KEY,        -- tool_use_id when available
+    session    TEXT,
+    agent      TEXT NOT NULL,
+    ts         REAL NOT NULL,
+    background INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS weights (
     token    TEXT PRIMARY KEY,
     w        REAL NOT NULL,
@@ -134,3 +142,48 @@ def upsert_weight(conn, token, w, evidence):
         "INSERT INTO weights (token, w, evidence, updated) VALUES (?,?,?,?)"
         " ON CONFLICT(token) DO UPDATE SET w=excluded.w, evidence=excluded.evidence,"
         " updated=excluded.updated", (token, w, evidence, time.time()))
+
+
+# A subagent still "running" after this long is assumed lost (crash, cancel).
+RUNNING_STALE_S = 30 * 60
+
+
+def start_run(conn, run_id, session, agent, background):
+    conn.execute("INSERT OR REPLACE INTO running (id, session, agent, ts, background) VALUES (?,?,?,?,?)",
+                 (run_id, session, agent, time.time(), int(background)))
+
+
+def end_run(conn, run_id=None, session=None, agent=None, background_only=False):
+    """Remove a running entry by id, else the oldest matching one for the session."""
+    if run_id and conn.execute("DELETE FROM running WHERE id=?", (run_id,)).rowcount:
+        return
+    q = "SELECT id FROM running WHERE session IS ?"
+    args = [session]
+    if agent:
+        q += " AND agent=?"
+        args.append(agent)
+    if background_only:
+        q += " AND background=1"
+    row = conn.execute(q + " ORDER BY ts LIMIT 1", args).fetchone()
+    if row:
+        conn.execute("DELETE FROM running WHERE id=?", (row["id"],))
+
+
+def running_agents(conn):
+    conn.execute("DELETE FROM running WHERE ts<?", (time.time() - RUNNING_STALE_S,))
+    return [r["agent"] for r in conn.execute("SELECT agent FROM running ORDER BY ts").fetchall()]
+
+
+def tier_shares(conn, since):
+    rows = conn.execute("SELECT tier, COUNT(*) AS n FROM decisions WHERE ts>? GROUP BY tier",
+                        (since,)).fetchall()
+    return {r["tier"]: r["n"] for r in rows}
+
+
+def last_decision(conn, session=None):
+    if session:
+        row = conn.execute("SELECT * FROM decisions WHERE session=? ORDER BY ts DESC LIMIT 1",
+                           (session,)).fetchone()
+        if row:
+            return row
+    return conn.execute("SELECT * FROM decisions ORDER BY ts DESC LIMIT 1").fetchone()

@@ -34,8 +34,11 @@ COMMANDS = ["router-stats.md", "router-learn.md"]
 
 HOOKS = {
     "UserPromptSubmit": {"hooks": [{"type": "command", "command": f"{RUN} prompt", "timeout": 10}]},
+    "PreToolUse": {"matcher": "Agent|Task",
+                   "hooks": [{"type": "command", "command": f"{RUN} agent-start", "timeout": 10}]},
     "PostToolUse": {"matcher": "Agent|Task",
                     "hooks": [{"type": "command", "command": f"{RUN} agent", "timeout": 10}]},
+    "SubagentStop": {"hooks": [{"type": "command", "command": f"{RUN} subagent-stop", "timeout": 10}]},
     "Stop": {"hooks": [{"type": "command", "command": f"{RUN} stop", "timeout": 10}]},
 }
 
@@ -135,6 +138,12 @@ def install(hygiene: bool):
         cfg.setdefault("hooks", {}).setdefault(event, []).append(entry)
 
     notes = []
+    status = cfg.get("statusLine")
+    if not status:
+        cfg["statusLine"] = {"type": "command", "command": f"{RUN} statusline", "padding": 0}
+        notes.append("status line set: running agents, 24h tier mix, last route")
+    elif MARK not in str(status.get("command", "")):
+        notes.append(f"you already have a status line; to show the router's, use: {RUN} statusline")
     if strip_ponytail:
         notes.append("Ponytail plugin detected: its rules reach the agents already, built-in copy skipped")
     if "model" not in cfg:
@@ -158,7 +167,7 @@ def install(hygiene: bool):
 
     print(f"claude-autorouter installed in {DEST}")
     print("  agents   quick (haiku), builder (sonnet), architect (opus)")
-    print("  hooks    UserPromptSubmit, PostToolUse(Agent|Task), Stop")
+    print("  hooks    UserPromptSubmit, Pre/PostToolUse(Agent|Task), SubagentStop, Stop")
     print("  commands /router-stats, /router-learn")
     for n in notes:
         print(f"  note     {n}")
@@ -171,6 +180,8 @@ def uninstall():
     path = CLAUDE / "settings.json"
     cfg = load_settings(path)
     strip_hooks(cfg)
+    if MARK in str((cfg.get("statusLine") or {}).get("command", "")):
+        del cfg["statusLine"]
     deny = cfg.get("permissions", {}).get("deny")
     if deny:
         cfg["permissions"]["deny"] = [r for r in deny if r not in HYGIENE_DENY]

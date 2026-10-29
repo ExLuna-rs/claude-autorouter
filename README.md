@@ -121,6 +121,20 @@ Force a tier by starting a prompt with a prefix. The router also learns from the
 | `!architect` | Opus                                   |
 | `!direct`    | no delegation, the main session answers |
 
+### Status line
+
+A one-line view of the router, refreshed by Claude Code as you work:
+
+```
+router ▶ architect, quick │ 24h 37: quick 46% · builder 35% · architect 19%/30% │ last: quick→builder
+```
+
+- **`▶ …`**: subagents running right now, including background ones (`idle` when none).
+- **`24h`**: tasks routed in the last 24 hours and the share of each tier. The architect share is shown against its daily cap.
+- **`last`**: the tier chosen for your last prompt, and where it ended up if it escalated.
+
+The script install sets it up automatically if you have no status line. With the plugin, run `/autorouter:statusline` once: plugins cannot edit your settings, so the command shows the change and asks before writing it. If you already have a status line, the router's is available as `run.py statusline` to combine yourself.
+
 Slash commands:
 
 - **`/router-stats`** (`/autorouter:router-stats` with the plugin): tasks per tier, escalation and overkill rates, cost per task and its trend, savings against the same tokens on Opus, and learned words.

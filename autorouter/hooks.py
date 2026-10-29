@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 import traceback
 
 from . import config, features, learn, router, store, usage
@@ -83,12 +84,51 @@ def on_prompt(data: dict) -> dict | None:
     return {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": line}}
 
 
+def _run_id(data):
+    return data.get("tool_use_id") or (data.get("tool_input") or {}).get("description")
+
+
+def on_agent_start(data: dict) -> None:
+    """PreToolUse on Agent/Task: mark the subagent as running (for the status line)."""
+    tool_input = data.get("tool_input") or {}
+    agent = learn.tier_of_agent(tool_input.get("subagent_type")) or \
+        (tool_input.get("subagent_type") or "general").split(":")[-1]
+    with store.connect() as conn:
+        store.start_run(conn, _run_id(data) or f"{data.get('session_id')}:{agent}:{time.time()}",
+                        data.get("session_id"), agent, bool(tool_input.get("run_in_background")))
+
+
+def on_subagent_stop(data: dict) -> None:
+    """SubagentStop: clear a finished background subagent.
+
+    Foreground subagents fire this too, and are cleared by PostToolUse instead.
+    When the event names the agent, clear a background run of that agent; when
+    it does not, clear one only if no foreground run could be the one stopping.
+    """
+    session = data.get("session_id")
+    agent_type = data.get("agent_type") or data.get("subagent_type")
+    with store.connect() as conn:
+        if agent_type:
+            agent = learn.tier_of_agent(agent_type) or agent_type.split(":")[-1]
+            store.end_run(conn, session=session, agent=agent, background_only=True)
+        elif not conn.execute("SELECT 1 FROM running WHERE session IS ? AND background=0",
+                              (session,)).fetchone():
+            store.end_run(conn, session=session, background_only=True)
+
+
 def on_agent(data: dict) -> None:
     """PostToolUse on Agent/Task: measure the run, detect escalation, learn."""
     tool_input = data.get("tool_input") or {}
+    background = bool(tool_input.get("run_in_background"))
+    if not background:
+        with store.connect() as conn:
+            store.end_run(conn, _run_id(data), data.get("session_id"),
+                          learn.tier_of_agent(tool_input.get("subagent_type")))
     agent_tier = learn.tier_of_agent(tool_input.get("subagent_type"))
-    if not agent_tier:
-        return  # not one of our tiers (Explore, general-purpose, ...)
+    if not agent_tier or background:
+        # Not one of our tiers, or launched in the background: the result here is
+        # only "started", so there is nothing to measure or learn from yet.
+        return
     settings = config.load()
     run = usage.agent_run(data.get("tool_response"), config.AGENT_MODEL[agent_tier], settings)
     with store.connect() as conn:
@@ -109,7 +149,8 @@ def on_stop(data: dict) -> None:
         _add_cost(conn, decision["id"], cost)
 
 
-HANDLERS = {"prompt": on_prompt, "agent": on_agent, "stop": on_stop}
+HANDLERS = {"prompt": on_prompt, "agent-start": on_agent_start, "agent": on_agent,
+            "subagent-stop": on_subagent_stop, "stop": on_stop}
 
 
 def script_install_active() -> bool:
@@ -122,11 +163,37 @@ def script_install_active() -> bool:
         return False
 
 
+def sync_runtime():
+    """Plugin installs live in a versioned folder that moves on every update.
+    Keep a copy at a stable path so the status line command never breaks."""
+    root = os.environ.get("CLAUDE_PLUGIN_ROOT")
+    if not root:
+        return
+    import shutil
+    from . import __version__
+    dest = config.home()
+    stamp = dest / "runtime-version"
+    try:
+        if stamp.read_text(encoding="utf-8").strip() == __version__:
+            return
+    except OSError:
+        pass
+    dest.mkdir(parents=True, exist_ok=True)
+    pkg = dest / "autorouter"
+    if pkg.exists():
+        shutil.rmtree(pkg)
+    shutil.copytree(os.path.join(root, "autorouter"), pkg, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copy2(os.path.join(root, "run.py"), dest / "run.py")
+    shutil.copy2(os.path.join(root, "scripts", "run.js"), dest / "run.js")
+    stamp.write_text(__version__, encoding="utf-8")
+
+
 def run(event: str) -> int:
     try:
         if os.environ.get("CLAUDE_PLUGIN_ROOT") and script_install_active():
             _read_stdin()
             return 0  # the script install handles routing; do not route twice
+        sync_runtime()
         out = HANDLERS[event](_read_stdin())
         if out:
             print(json.dumps(out))

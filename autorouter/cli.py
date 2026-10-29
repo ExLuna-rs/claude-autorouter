@@ -4,6 +4,7 @@
     run.py explain "<prompt>"       show how a prompt would be routed
     run.py stats [--days N]         escalation rates, cost per task, learned words
     run.py report [--days N]        misroutes, as material for /router-learn
+    run.py statusline               status line: running agents, 24h tier mix, last route
     run.py reset --weights|--all --yes
 """
 from __future__ import annotations
@@ -103,6 +104,60 @@ def cmd_stats(args):
             print("learned easier: " + ", ".join(f"{w['token']} {w['w']:+.2f}" for w in down))
 
 
+SHORT = {"quick": "quick", "builder": "builder", "architect": "architect", "direct": "direct"}
+
+
+def statusline(session=None, now=None) -> str:
+    """One line: running subagents, 24h tier shares (architect vs its cap), last route."""
+    s = config.load()
+    now = now or time.time()
+    with store.connect() as conn:
+        running = store.running_agents(conn)
+        shares = store.tier_shares(conn, now - 86400)
+        last = store.last_decision(conn, session)
+
+    parts = []
+    if running:
+        counts = {}
+        for a in running:
+            counts[a] = counts.get(a, 0) + 1
+        parts.append("▶ " + ", ".join(f"{a}×{n}" if n > 1 else a for a, n in counts.items()))
+    else:
+        parts.append("idle")
+
+    total = sum(shares.values())
+    if total:
+        mix = []
+        for t in config.DELEGATED:
+            pct = shares.get(t, 0) / total
+            cell = f"{t} {pct:.0%}"
+            if t == "architect":
+                cell += f"/{s.opus_daily_cap:.0%}"
+            mix.append(cell)
+        parts.append(f"24h {total}: " + " · ".join(mix))
+
+    if last:
+        tail = f"last: {last['tier']}"
+        if last["final_tier"] and last["final_tier"] != last["tier"]:
+            tail += f"→{last['final_tier']}"
+        parts.append(tail)
+    return "router " + " │ ".join(parts)
+
+
+def cmd_statusline(args):
+    session = None
+    if not sys.stdin.isatty():
+        try:
+            data = json.loads(sys.stdin.read() or "{}")
+            session = data.get("session_id") if isinstance(data, dict) else None
+        except ValueError:
+            pass
+    try:
+        print(statusline(session))
+    except Exception:  # noqa: BLE001 - a status line must always print something
+        print("router")
+
+
 def cmd_report(args):
     s = config.load()
     with store.connect() as conn:
@@ -164,6 +219,7 @@ def main(argv=None) -> int:
     st.add_argument("--days", type=int, default=30)
     rp = sub.add_parser("report", help="misroutes, for /router-learn")
     rp.add_argument("--days", type=int, default=14)
+    sub.add_parser("statusline", help="one-line status for Claude Code's status line")
     rs = sub.add_parser("reset", help="clear learned data")
     g = rs.add_mutually_exclusive_group(required=True)
     g.add_argument("--weights", action="store_true")
@@ -171,5 +227,6 @@ def main(argv=None) -> int:
     rs.add_argument("--yes", action="store_true")
 
     args = p.parse_args(argv)
-    fn = {"explain": cmd_explain, "stats": cmd_stats, "report": cmd_report, "reset": cmd_reset}[args.cmd]
+    fn = {"explain": cmd_explain, "stats": cmd_stats, "report": cmd_report, "reset": cmd_reset,
+          "statusline": cmd_statusline}[args.cmd]
     return fn(args) or 0

@@ -9,12 +9,14 @@ const { spawnSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 
-const runPy = path.join(__dirname, "..", "run.py");
+const runPy = [path.join(__dirname, "run.py"), path.join(__dirname, "..", "run.py")]
+  .find((p) => fs.existsSync(p));
 const args = process.argv.slice(2);
-const isHook = ["prompt", "agent", "stop"].includes(args[0]);
+const isHook = ["prompt", "agent-start", "agent", "subagent-stop", "stop"].includes(args[0]);
+const isStatus = args[0] === "statusline";
 
 let input = Buffer.alloc(0);
-if (isHook) {
+if (isHook || isStatus) {
   try { input = fs.readFileSync(0); } catch (_) { /* no stdin */ }
 }
 
@@ -34,6 +36,10 @@ for (const [cmd, pre] of candidates) {
   process.exit(isHook ? 0 : (r.status ?? 0));
 }
 
+if (isStatus) {
+  console.log("router (python not found)");
+  process.exit(0);
+}
 if (!isHook) {
   console.error("claude-autorouter: Python 3.9+ not found (tried python3, python, py).");
   process.exit(1);

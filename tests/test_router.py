@@ -192,6 +192,48 @@ class LearningTest(Isolated):
         self.assertEqual(self.tier("design the architecture of a distributed queue"), "architect")
 
 
+class StatusLineTest(Isolated):
+    def test_running_lifecycle_and_shares(self):
+        from autorouter import cli
+        run_task("st", "find the session store", [])
+        run_task("st", "design the plugin architecture", [])
+        hooks.on_agent_start({"session_id": "st", "tool_use_id": "t1",
+                              "tool_input": {"subagent_type": "autorouter:architect"}})
+        hooks.on_agent_start({"session_id": "st", "tool_use_id": "t2",
+                              "tool_input": {"subagent_type": "quick", "run_in_background": True}})
+        line = cli.statusline("st")
+        self.assertIn("▶ architect, quick", line)
+        self.assertIn("quick 50%", line)
+        self.assertIn("architect 50%/30%", line)
+        self.assertIn("last: architect", line)
+
+        # Foreground finishes through PostToolUse; its SubagentStop must not clear the background run.
+        hooks.on_subagent_stop({"session_id": "st"})
+        hooks.on_agent({"session_id": "st", "tool_use_id": "t1",
+                        "tool_input": {"subagent_type": "autorouter:architect"}, "tool_response": done()})
+        self.assertIn("▶ quick", cli.statusline("st"))
+        hooks.on_subagent_stop({"session_id": "st", "agent_type": "autorouter:quick"})
+        self.assertIn("idle", cli.statusline("st"))
+
+    def test_background_runs_are_not_learned(self):
+        run_task("bg", "find the session store", [])
+        hooks.on_agent({"session_id": "bg", "tool_input": {"subagent_type": "quick", "run_in_background": True},
+                        "tool_response": "Agent started in the background"})
+        with store.connect() as conn:
+            self.assertEqual(conn.execute("SELECT COUNT(*) FROM outcomes").fetchone()[0], 0)
+
+    def test_stale_runs_expire(self):
+        from autorouter import cli
+        with store.connect() as conn:
+            store.start_run(conn, "old", "x", "builder", False)
+            conn.execute("UPDATE running SET ts=?", (time.time() - 3600,))
+        self.assertIn("idle", cli.statusline())
+
+    def test_empty_db(self):
+        from autorouter import cli
+        self.assertEqual(cli.statusline(), "router idle")
+
+
 class UsageTest(Isolated):
     def test_agent_run_variants(self):
         s = config.load()
@@ -276,7 +318,7 @@ class PluginTest(Isolated):
         for dep in plugin.get("dependencies", []):
             self.assertIn(dep, names)
         hooks_cfg = json.loads((ROOT / "hooks" / "hooks.json").read_text(encoding="utf-8"))
-        for event in ["UserPromptSubmit", "PostToolUse", "Stop"]:
+        for event in ["UserPromptSubmit", "PreToolUse", "PostToolUse", "SubagentStop", "Stop"]:
             cmd = hooks_cfg["hooks"][event][0]["hooks"][0]["command"]
             self.assertIn('"${CLAUDE_PLUGIN_ROOT}/scripts/run.js"', cmd)
         for name in ["router-stats.md", "router-learn.md"]:
@@ -292,6 +334,17 @@ class PluginTest(Isolated):
         r = self.node("explain", "design a distributed queue")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn(b"architect", r.stdout)
+
+    def test_runtime_copy_and_status_line_via_node(self):
+        r = self.node("prompt", stdin=json.dumps({"prompt": "find x", "session_id": "rt"}).encode())
+        self.assertEqual(r.returncode, 0, r.stderr)
+        home = config.home()
+        self.assertTrue((home / "run.js").exists() and (home / "run.py").exists())
+        r = subprocess.run(["node", str(home / "run.js"), "statusline"], input=b'{"session_id":"rt"}',
+                           capture_output=True, env={k: v for k, v in os.environ.items() if k != "CLAUDE_PLUGIN_ROOT"},
+                           timeout=60)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("last: quick", r.stdout.decode("utf-8"))
 
     def test_plugin_defers_to_script_install(self):
         with tempfile.TemporaryDirectory() as home:
@@ -350,6 +403,17 @@ class InstallTest(unittest.TestCase):
             self.assertNotIn("CLAUDE_PLUGIN_ROOT", text)
             self.assertIn("autorouter/run.py", text)
             self.assertRegex(text.split("---")[1], r"allowed-tools: .*Bash\(")
+
+    def test_status_line_set_and_respected(self):
+        claude, out = self.install({})
+        cfg = json.loads((claude / "settings.json").read_text())
+        self.assertTrue(cfg["statusLine"]["command"].endswith('run.py" statusline'))
+        self.assertEqual(len(cfg["hooks"]["PreToolUse"]), 1)
+        self.assertEqual(len(cfg["hooks"]["SubagentStop"]), 1)
+        claude2, out2 = self.install({"statusLine": {"type": "command", "command": "my-line"}})
+        cfg2 = json.loads((claude2 / "settings.json").read_text())
+        self.assertEqual(cfg2["statusLine"]["command"], "my-line")
+        self.assertIn("already have a status line", out2)
 
     def test_refuses_when_plugin_enabled(self):
         tmp = tempfile.TemporaryDirectory()
