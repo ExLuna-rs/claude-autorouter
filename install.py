@@ -79,6 +79,7 @@ def strip_hooks(cfg: dict):
         cfg.pop("hooks", None)
 
 
+STATUS_REFRESH_S = 2
 PONYTAIL_SLOT = "<!-- ponytail-rules -->"
 PLUGIN_LAUNCH = 'node "${CLAUDE_PLUGIN_ROOT}/scripts/run.js"'
 COMMAND_TOOLS = {
@@ -139,10 +140,13 @@ def install(hygiene: bool):
 
     notes = []
     status = cfg.get("statusLine")
-    if not status:
-        cfg["statusLine"] = {"type": "command", "command": f"{RUN} statusline", "padding": 0}
-        notes.append("status line set: running agents, 24h tier mix, last route")
-    elif MARK not in str(status.get("command", "")):
+    if not status or MARK in str(status.get("command", "")):
+        # Claude Code does not re-run the status line while a subagent works,
+        # so without a refresh interval "running" agents would never show.
+        cfg["statusLine"] = {"type": "command", "command": f"{RUN} statusline", "padding": 0,
+                             "refreshInterval": STATUS_REFRESH_S}
+        notes.append(f"status line set (refreshed every {STATUS_REFRESH_S}s): running agents, 24h tier mix, last route")
+    else:
         notes.append(f"you already have a status line; to show the router's, use: {RUN} statusline")
     if strip_ponytail:
         notes.append("Ponytail plugin detected: its rules reach the agents already, built-in copy skipped")

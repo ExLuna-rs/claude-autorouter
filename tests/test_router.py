@@ -408,12 +408,19 @@ class InstallTest(unittest.TestCase):
         claude, out = self.install({})
         cfg = json.loads((claude / "settings.json").read_text())
         self.assertTrue(cfg["statusLine"]["command"].endswith('run.py" statusline'))
+        self.assertEqual(cfg["statusLine"]["refreshInterval"], 2)
         self.assertEqual(len(cfg["hooks"]["PreToolUse"]), 1)
         self.assertEqual(len(cfg["hooks"]["SubagentStop"]), 1)
         claude2, out2 = self.install({"statusLine": {"type": "command", "command": "my-line"}})
         cfg2 = json.loads((claude2 / "settings.json").read_text())
         self.assertEqual(cfg2["statusLine"]["command"], "my-line")
         self.assertIn("already have a status line", out2)
+
+    def test_status_line_upgrade_adds_refresh(self):
+        old = {"type": "command", "command": '"/usr/bin/python3" "/x/.claude/autorouter/run.py" statusline'}
+        claude, _ = self.install({"statusLine": old})
+        cfg = json.loads((claude / "settings.json").read_text())
+        self.assertEqual(cfg["statusLine"]["refreshInterval"], 2)
 
     def test_refuses_when_plugin_enabled(self):
         tmp = tempfile.TemporaryDirectory()

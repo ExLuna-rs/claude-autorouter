@@ -133,7 +133,7 @@ router ▶ architect, quick │ 24h 37: quick 46% · builder 35% · architect 19
 - **`24h`**: tasks routed in the last 24 hours and the share of each tier. The architect share is shown against its daily cap.
 - **`last`**: the tier chosen for your last prompt, and where it ended up if it escalated.
 
-The script install sets it up automatically if you have no status line. With the plugin, run `/autorouter:statusline` once: plugins cannot edit your settings, so the command shows the change and asks before writing it. If you already have a status line, the router's is available as `run.py statusline` to combine yourself.
+It is refreshed every 2 seconds (`refreshInterval`), because Claude Code does not otherwise re-run the status line while a subagent is working. The script install sets it up automatically if you have no status line. With the plugin, run `/autorouter:statusline` once: plugins cannot edit your settings, so the command shows the change and asks before writing it. If you already have a status line, the router's is available as `run.py statusline` to combine yourself.
 
 Slash commands:
 

@@ -1,7 +1,7 @@
 {
   "name": "autorouter",
   "displayName": "Autorouter",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Cost-aware, self-learning model router: sends each prompt to Haiku, Sonnet or Opus subagents, escalates with hand-off, learns from outcomes. Ships with Ponytail for minimal code.",
   "author": { "name": "Corentin Janson", "url": "https://github.com/ExLuna-rs" },
   "homepage": "https://github.com/ExLuna-rs/claude-autorouter",
