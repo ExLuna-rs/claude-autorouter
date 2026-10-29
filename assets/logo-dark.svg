@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <filter id="o" x="-10%" y="-10%" width="120%" height="120%"><feMorphology in="SourceAlpha" operator="dilate" radius="5" result="d"/><feFlood flood-color="#fff"/><feComposite in2="d" operator="in" result="w"/><feMerge><feMergeNode in="w"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <g filter="url(#o)">
+  <!-- wands: black outline, then glow -->
+  <g stroke="#111" stroke-width="10"><path d="M82 140L68 105"/><path d="M318 140L332 105"/></g>
+  <g fill="#F5C542" stroke="#111" stroke-width="5">
+    <path d="M72.8 107.9L56.4 48.8L39.6 55.2L67.2 110.1Z"/><path d="M327.2 107.9L343.6 48.8L360.4 55.2L332.8 110.1Z"/>
+  </g>
+  <!-- arms -->
+  <g stroke="#111" stroke-width="22"><path d="M132 200L82 140"/><path d="M268 200L318 140"/></g>
+  <g stroke="#D97757" stroke-width="10"><path d="M132 200L82 140"/><path d="M268 200L318 140"/></g>
+  <!-- legs -->
+  <g fill="#D97757" stroke="#111" stroke-width="6">
+    <rect x="150" y="262" width="16" height="44"/><rect x="178" y="262" width="16" height="44"/>
+    <rect x="206" y="262" width="16" height="44"/><rect x="234" y="262" width="16" height="44"/>
+  </g>
+  <!-- body -->
+  <rect x="130" y="150" width="140" height="116" rx="8" fill="#D97757" stroke="#111" stroke-width="6"/>
+  <!-- hi-vis vest: straps + band with reflective stripe -->
+  <g fill="#C6F135" stroke="#111" stroke-width="6">
+    <rect x="136" y="156" width="20" height="70"/><rect x="244" y="156" width="20" height="70"/>
+    <rect x="130" y="222" width="140" height="44" rx="8"/>
+  </g>
+  <path d="M132 244H268" stroke="#fff" stroke-width="10"/>
+  <path d="M132 244H268" stroke="#111" stroke-width="2"/>
+  <!-- helmet -->
+  <path d="M136 150Q136 106 200 106Q264 106 264 150Z" fill="#fff" stroke="#111" stroke-width="6"/>
+  <rect x="124" y="146" width="152" height="10" rx="5" fill="#fff" stroke="#111" stroke-width="6"/>
+  <path d="M200 108V146" stroke="#111" stroke-width="4"/>
+  <!-- eyes -->
+  <rect x="168" y="186" width="16" height="30" fill="#111"/><rect x="216" y="186" width="16" height="30" fill="#111"/>
+  <!-- ground -->
+  <path d="M90 322H310" stroke="#111" stroke-width="6"/>
+  </g>
+</svg>

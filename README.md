@@ -1,4 +1,24 @@
-# claude-autorouter
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg">
+    <img src="assets/logo.svg" width="200" alt="claude-autorouter: the Claude mascot as an airport marshaller">
+  </picture>
+</p>
+
+<h1 align="center">claude-autorouter</h1>
+
+<p align="center">
+  <em>He waves the wands. The right model lands.</em>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
+  <img src="https://img.shields.io/badge/python-3.9%2B-111111?style=flat-square" alt="Python 3.9+">
+  <img src="https://img.shields.io/badge/dependencies-stdlib%20only-111111?style=flat-square" alt="Standard library only">
+  <img src="https://img.shields.io/badge/Claude%20Code-2.1.275%2B-111111?style=flat-square" alt="Claude Code 2.1.275+">
+</p>
+
+---
 
 **Cost-aware, self-learning model routing for Claude Code.**
 Every prompt is routed to Haiku, Sonnet or Opus based on its complexity. When a cheap tier is not enough, it escalates without starting over, and the router learns from it. Built for Pro/Max subscriptions: no proxy, no API key, standard library only.
