@@ -1,0 +1,137 @@
+{"p": "where is the auth middleware defined?", "t": "quick"}
+{"p": "find all calls to fetchUser", "t": "quick"}
+{"p": "rename userId to accountId in utils.ts", "t": "quick"}
+{"p": "what does this docker-compose file do?", "t": "quick"}
+{"p": "list the files in src/", "t": "quick"}
+{"p": "show me the scripts in package.json", "t": "quick"}
+{"p": "fix the typo in the README", "t": "quick"}
+{"p": "add a docstring to parse_csv", "t": "quick"}
+{"p": "add a comment explaining the retry loop", "t": "quick"}
+{"p": "explain how the retry loop works", "t": "quick"}
+{"p": "how many tests are there?", "t": "quick"}
+{"p": "open config.py and tell me the default port", "t": "quick"}
+{"p": "summarize this file", "t": "quick"}
+{"p": "format this file with black", "t": "quick"}
+{"p": "où est défini le middleware d'auth ?", "t": "quick"}
+{"p": "trouve tous les appels à fetchUser", "t": "quick"}
+{"p": "renomme userId en accountId dans utils.ts", "t": "quick"}
+{"p": "c'est quoi ce fichier docker-compose ?", "t": "quick"}
+{"p": "combien de tests y a-t-il ?", "t": "quick"}
+{"p": "explique-moi ce que fait cette fonction", "t": "quick"}
+{"p": "ajoute un commentaire au-dessus de cette boucle", "t": "quick"}
+{"p": "corrige la faute de frappe dans le README", "t": "quick"}
+{"p": "¿Dónde está definido el middleware de autenticación?", "t": "quick"}
+{"p": "busca todas las llamadas a fetchUser", "t": "quick"}
+{"p": "explica qué hace esta función", "t": "quick"}
+{"p": "Wo ist die Authentifizierung definiert?", "t": "quick"}
+{"p": "finde alle Aufrufe von fetchUser", "t": "quick"}
+{"p": "Onde está definido o middleware?", "t": "quick"}
+{"p": "encontre todas as chamadas de fetchUser", "t": "quick"}
+{"p": "认证中间件在哪里定义的？", "t": "quick"}
+{"p": "解释一下这个函数是做什么的", "t": "quick"}
+{"p": "認証ミドルウェアはどこで定義されていますか？", "t": "quick"}
+{"p": "この関数を説明して", "t": "quick"}
+{"p": "add a GET /health endpoint returning the database status", "t": "builder"}
+{"p": "write unit tests for the CSV parser", "t": "builder"}
+{"p": "fix the bug in the orders list pagination", "t": "builder"}
+{"p": "make the settings page save on blur", "t": "builder"}
+{"p": "add a dark mode toggle to the navbar", "t": "builder"}
+{"p": "update the CI workflow to run on Python 3.13", "t": "builder"}
+{"p": "show me how to add caching to the products API", "t": ["builder", "architect"]}
+{"p": "what format should the API return for errors?", "t": ["builder", "architect"]}
+{"p": "comment faire pour ajouter une pagination à la liste des commandes ?", "t": ["builder", "architect"]}
+{"p": "corrige le bug dans la pagination de la liste des commandes", "t": "builder"}
+{"p": "ajoute un bouton d'export CSV sur la page des commandes", "t": "builder"}
+{"p": "je n'arrive pas à cliquer sur les barres des plugins, c'est normal ?", "t": "builder"}
+{"p": "il faudrait juste lui faire un petit contour blanc pour qu'il ressorte sur le noir", "t": "builder"}
+{"p": "on peut essayer de faire un truc un peu cool comme le readme de ponytail ?", "t": "builder"}
+{"p": "how do I make the login form accessible?", "t": ["builder", "architect"]}
+{"p": "add a comment block and refactor this function into two smaller ones", "t": "builder"}
+{"p": "arregla el error en la paginación de la lista de pedidos", "t": "builder"}
+{"p": "añade un endpoint /health que devuelva el estado de la base de datos", "t": "builder"}
+{"p": "behebe den Fehler in der Paginierung der Bestellliste", "t": "builder"}
+{"p": "füge einen Dark-Mode-Schalter zur Navigationsleiste hinzu", "t": "builder"}
+{"p": "corrija o bug na paginação da lista de pedidos", "t": "builder"}
+{"p": "adicione um botão de exportar CSV", "t": "builder"}
+{"p": "修复订单列表分页的 bug", "t": "builder"}
+{"p": "给导航栏添加一个深色模式开关", "t": "builder"}
+{"p": "注文一覧のページネーションのバグを直して", "t": "builder"}
+{"p": "ナビバーにダークモード切り替えを追加して", "t": "builder"}
+{"p": "добавь эндпоинт /health", "t": "builder"}
+{"p": "пожалуйста исправь баг в пагинации", "t": "builder"}
+{"p": "why does the app crash randomly at startup?", "t": "architect"}
+{"p": "design the architecture of a distributed job queue", "t": "architect"}
+{"p": "security audit of the licence server, look for vulnerabilities", "t": "architect"}
+{"p": "migrate the project from Vue 2 to Vue 3", "t": "architect"}
+{"p": "compare these two approaches for syncing offline edits and recommend one", "t": "architect"}
+{"p": "there is a race condition somewhere in the websocket handler, find the root cause", "t": "architect"}
+{"p": "how should I structure the plugin so it scales to many users?", "t": ["builder", "architect"]}
+{"p": "what is the best way to migrate from REST to GraphQL?", "t": "architect"}
+{"p": "pourquoi l'application plante de façon aléatoire au démarrage ?", "t": "architect"}
+{"p": "audit de sécurité du serveur de licences", "t": "architect"}
+{"p": "conçois l'architecture d'une file de jobs distribuée", "t": "architect"}
+{"p": "alors comment faire en sorte que notre système devienne vraiment robuste sur le routage ?", "t": ["builder", "architect"]}
+{"p": "diseña la arquitectura de una cola distribuida", "t": "architect"}
+{"p": "audita la seguridad del servidor y busca vulnerabilidades", "t": "architect"}
+{"p": "Warum stürzt die App zufällig ab?", "t": "architect"}
+{"p": "Entwirf die Architektur einer verteilten Warteschlange", "t": "architect"}
+{"p": "projete a arquitetura de uma fila distribuída", "t": "architect"}
+{"p": "migrar o projeto de Vue 2 para Vue 3", "t": "architect"}
+{"p": "为什么应用启动时随机崩溃？", "t": "architect"}
+{"p": "设计一个分布式任务队列的架构", "t": "architect"}
+{"p": "なぜアプリが起動時にクラッシュするの？", "t": "architect"}
+{"p": "分散ジョブキューのアーキテクチャを設計して", "t": "architect"}
+{"p": "ok", "t": "direct"}
+{"p": "yes go ahead", "t": "direct"}
+{"p": "oui vas-y", "t": "direct"}
+{"p": "merci !", "t": "direct"}
+{"p": "continue", "t": "direct"}
+{"p": "好的，继续", "t": "direct"}
+{"p": "ありがとう", "t": "direct"}
+{"p": "danke", "t": "direct"}
+{"p": "!architect fix this typo", "t": "architect"}
+{"p": "!quick audit everything", "t": "quick"}
+{"p": "which file contains the database config?", "t": "quick"}
+{"p": "show the git log of the last 5 commits", "t": "quick"}
+{"p": "what's in the .env.example file?", "t": "quick"}
+{"p": "print the version number from package.json", "t": "quick"}
+{"p": "rename the variable tmp to buffer", "t": "quick"}
+{"p": "remove the unused import in app.py", "t": "quick"}
+{"p": "add a type annotation to the main function", "t": "quick"}
+{"p": "translate this error message to French", "t": ["quick", "builder"]}
+{"p": "read utils.py and list its functions", "t": "quick"}
+{"p": "how does the cache invalidation work in this file?", "t": "quick"}
+{"p": "show me a plan to speed up the build", "t": ["builder", "architect"]}
+{"p": "list the steps to deploy this to production", "t": ["builder", "architect"]}
+{"p": "find out why the tests are slow", "t": ["builder", "architect"]}
+{"p": "find the bug that makes the totals wrong", "t": "builder"}
+{"p": "search for a good way to handle retries", "t": ["builder", "architect"]}
+{"p": "explain the best way to organise the services folder", "t": ["builder", "architect"]}
+{"p": "write a script that renames all the images by date", "t": "builder"}
+{"p": "open a PR description for these changes", "t": "builder"}
+{"p": "show a loading spinner while the data loads", "t": "builder"}
+{"p": "show an error toast when the upload fails", "t": "builder"}
+{"p": "list the orders sorted by date in the admin page", "t": "builder"}
+{"p": "display the user's avatar in the header", "t": "builder"}
+{"p": "comment peut-on optimiser les requêtes de la page d'accueil ?", "t": ["builder", "architect"]}
+{"p": "peux-tu me montrer comment brancher Stripe sur le checkout ?", "t": ["builder", "architect"]}
+{"p": "liste les commandes en retard sur le tableau de bord", "t": "builder"}
+{"p": "ajoute la possibilité d'exporter en PDF", "t": "builder"}
+{"p": "affiche un message d'erreur si le champ est vide", "t": "builder"}
+{"p": "où se trouve la fonction qui calcule le total ?", "t": "quick"}
+{"p": "quelle est la version de Node utilisée ici ?", "t": "quick"}
+{"p": "¿cómo puedo estructurar mejor los servicios?", "t": ["builder", "architect"]}
+{"p": "muestra un mensaje de error cuando falla la subida", "t": "builder"}
+{"p": "lista los archivos de src", "t": "quick"}
+{"p": "zeige eine Fehlermeldung, wenn der Upload fehlschlägt", "t": "builder"}
+{"p": "wie kann ich die Tests schneller machen?", "t": ["builder", "architect"]}
+{"p": "mostre uma mensagem de erro quando o upload falhar", "t": "builder"}
+{"p": "como posso melhorar a estrutura dos serviços?", "t": ["builder", "architect"]}
+{"p": "表示エラーを修正して", "t": "builder"}
+{"p": "这个项目的入口文件在哪里？", "t": "quick"}
+{"p": "如何提高路由的稳定性？", "t": ["builder", "architect"]}
+{"p": "is there a memory leak in the image cache?", "t": "architect"}
+{"p": "the build is flaky on CI, can you investigate?", "t": "architect"}
+{"p": "review the auth flow for security issues", "t": "architect"}
+{"p": "decide between Postgres and MongoDB for the analytics service", "t": "architect"}
+{"p": "plan the migration of the billing module to the new API", "t": "architect"}

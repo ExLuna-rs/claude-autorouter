@@ -29,6 +29,18 @@ class Isolated(unittest.TestCase):
         return router.route(prompt, cwd=cwd).tier
 
 
+class EvalTest(unittest.TestCase):
+    """Routing quality on tests/eval.jsonl; a too-weak model is the mistake that costs the most."""
+
+    def test_eval_set(self):
+        sys.path.insert(0, str(ROOT / "tests"))
+        import eval as ev
+        rows, n = ev.evaluate()
+        bad = [r for r in rows if r[3] != "ok"]
+        self.assertEqual(n["under"], 0, bad)
+        self.assertGreaterEqual(n["ok"] / len(rows), 0.95, bad)
+
+
 class RulesTest(Isolated):
     CASES = [
         ("where is the auth middleware defined?", "quick"),
