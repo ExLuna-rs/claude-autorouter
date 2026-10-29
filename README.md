@@ -49,7 +49,7 @@ flowchart LR
     DB --> H
 ```
 
-1. **Route.** A `UserPromptSubmit` hook scores the prompt (English and French rules), adds learned per-word weights, looks up similar past tasks, and injects one short line telling the main session (Sonnet, the orchestrator) what to do. `quick` and `architect` tasks are delegated to their subagents. `builder` tasks are handled by the orchestrator itself, since it is Sonnet too and a subagent's cold start costs more than it saves; it delegates to the `builder` subagent only for large tasks whose exploration would clutter the main context, and to `architect` (with a hand-off) if it gets stuck. Follow-ups such as "ok go ahead" are not routed.
+1. **Route.** A `UserPromptSubmit` hook scores the prompt (rules for English and French, plus experimental packs for other languages), adds learned per-word weights, looks up similar past tasks, and injects one short line telling the main session (Sonnet, the orchestrator) what to do. `quick` and `architect` tasks are delegated to their subagents. `builder` tasks are handled by the orchestrator itself, since it is Sonnet too and a subagent's cold start costs more than it saves; it delegates to the `builder` subagent only for large tasks whose exploration would clutter the main context, and to `architect` (with a hand-off) if it gets stuck. Follow-ups such as "ok go ahead" are not routed.
 2. **Escalate.** Subagents that hit something beyond their tier stop and answer `ESCALATE:` with a `HANDOFF` block (files read, facts found, hypotheses ruled out). The orchestrator re-delegates one tier up, and the next tier starts from the hand-off instead of re-exploring.
 3. **Measure.** A `PostToolUse` hook records each delegated run (tokens, tool calls, escalation). A `Stop` hook adds the main session's own token usage for the turn, read from the transcript.
 4. **Learn.** Three mechanisms, all local:
@@ -205,7 +205,11 @@ Optional, in `~/.claude/autorouter/config.json`. Every key is optional; see `aut
 }
 ```
 
-Patterns are Python regexes matched against the prompt lower-cased with accents removed.
+Patterns are Python regexes matched against the prompt lower-cased with Latin accents removed.
+
+### Languages
+
+Rules live in language packs, `autorouter/lang/<code>.json`, and all packs are active at once, so no language setting is needed. English and French are the reference packs. Spanish, German, Portuguese, Chinese and Japanese are **experimental** starters, checked against only a handful of prompts each; pull requests that improve them or add a language are welcome. A pack is a JSON object with any of `strong`, `weak`, `quick`, `multi_file`, `follow_up` (regexes) and `stopwords` (words); copy `en.json` as a model. Write Latin-script patterns without accents. For a language of your own, put the file in `~/.claude/autorouter/lang/` (same format) without touching the plugin. A language with no pack still gets length-based routing, learned word weights and similar-task lookup (CJK text is split into character pairs), and the `!quick`, `!builder`, `!architect` overrides work everywhere.
 
 ## Data and privacy
 

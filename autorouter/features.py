@@ -1,86 +1,95 @@
 """Prompt normalisation, tokenisation and rule-based complexity signals.
 
-Patterns match English and French. Text is lower-cased and stripped of
-accents before matching, so patterns are written without accents.
+Patterns live in language packs (autorouter/lang/*.json, plus the user's
+<home>/lang/*.json); every pack is active at once, so a prompt in any covered
+language is scored. Text is lower-cased and stripped of Latin accents before
+matching, so Latin patterns are written without accents.
 """
 from __future__ import annotations
 
+import json
 import re
 import unicodedata
 from dataclasses import dataclass, field
+from functools import lru_cache
+from pathlib import Path
 
-# Strong signals justify the top tier on their own.
-STRONG = [
-    r"\barchitectur", r"\bdesign\b", r"\bconcev", r"\bconcoi", r"\bconception\b",
-    r"\baudit", r"\bvuln", r"\bcve\b", r"\bfaille", r"\bpentest", r"\bthreat model",
-    r"\bmigrat", r"\bmigre[rz]?\b",
-    r"\brefactor\w*\s+(the\s+)?(whole|entire|all)\b",
-    r"\brefacto\w*\s+(global|complet|tout|entier)",
-    r"\brace condition", r"\bdeadlock", r"\bmemory leak", r"\bfuite memoire",
-    r"\bintermittent", r"\baleatoire", r"\brandom(ly)?\s+(crash|fail)",
-    r"\bflaky\b",
-    r"\bwhy\b.*\b(crash|fail|broken|hang|doesn'?t work)",
-    r"\bpourquoi\b.*\b(plante|crash|bug|marche pas|fonctionne pas|bloque)",
-    r"\btrade-?offs?\b", r"\bcompar\w*\b.*\b(approach|approche|solution|option|architecture)",
-    r"\bcryptograph", r"\bdistributed\b", r"\bdistribue", r"\bscalab",
-    r"\broot cause\b", r"\bcause racine\b",
-]
+from . import config
 
-# Weak signals add weight but never decide on their own.
-WEAK = [
-    r"\bsecurit", r"\bsecurity\b", r"\bauthenti", r"\bauth\b", r"\boauth",
-    r"\blicen[cs]", r"\bconcurren", r"\bthread", r"\basync\b", r"\bperformance",
-    r"\boptimi[sz]", r"\bplan\b", r"\bdebug", r"\bbug\b", r"\bcache\b",
-    r"\bdatabase\b", r"\bschema\b", r"\bbase de donnees\b", r"\bapi\b",
-]
+KEYS = ("strong", "weak", "quick", "multi_file", "follow_up", "stopwords", "advice", "work",
+        "quick_verbs", "code_words")
+CJK = re.compile("[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\uff66-\uff9f]")
+# A file name, backticks, snake_case, camelCase or a path: the prompt is about specific code.
+ANCHOR = re.compile(r"`|\w{2,}\.[a-z]{1,5}\b|\w_\w|\b[a-z]+[A-Z]\w*|[/\\]\w")
+CJK_RUN = re.compile(CJK.pattern + "+")
 
-# Lookups and small edits.
-QUICK = [
-    r"^\s*(where|which file|ou\b|quel(le)?s? fichier)",
-    r"^\s*(find|search|grep|list|show|locate|trouve|cherche|liste|montre|localise)\b",
-    r"^\s*(read|open|cat|lis|ouvre|affiche)\b",
-    r"^\s*(what is|what's|what does|c'?est quoi|qu'?est-ce que?)\b",
-    r"^\s*(how many|combien)\b",
-    r"\brename\b", r"\brenomm", r"\btypos?\b", r"\bfaute de frappe",
-    r"\bformat(ting)?\b", r"\breformat", r"\bdocstring", r"\bcomment(aire)?s?\b",
-    r"\bmissing import", r"\bimport manquant",
-]
 
-MULTI_FILE = [
-    r"\ball files\b", r"\bevery file\b", r"\bmultiple files\b", r"\bcodebase\b",
-    r"\bwhole (repo|project)\b", r"\bentire (repo|project)\b",
-    r"\btous les fichiers\b", r"\bplusieurs fichiers\b", r"\bprojet entier\b",
-    r"\btout le (repo|projet|code)\b",
-]
+def _compile(patterns):
+    out = []
+    for p in patterns:
+        try:
+            out.append(re.compile(p))
+        except re.error:
+            continue  # a bad pack pattern must never break routing
+    return out
 
-# Conversational follow-ups: the orchestrator handles these itself.
-FOLLOW_UP = re.compile(
-    r"^\s*(ok(ay)?|yes|yep|no|nope|go( ahead)?|continue|proceed|thanks?( you)?|"
-    r"oui|non|vas-?y|go on|continue|merci|parfait|top|d'?accord|ca marche|"
-    r"lgtm|sounds good|do it|fais-?le|c'?est bon)\b.{0,40}$")
+
+@lru_cache(maxsize=None)
+def pack(user_dir: str):
+    """Merged, compiled patterns of all language packs."""
+    merged = {k: {} for k in KEYS}
+    for d in (Path(__file__).parent / "lang", Path(user_dir)):
+        for f in sorted(d.glob("*.json")):
+            try:
+                data = json.loads(f.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            for k in KEYS:
+                for item in data.get(k, []) if isinstance(data, dict) else []:
+                    if isinstance(item, str):
+                        merged[k][item] = None  # dict: dedupe across packs, keep order
+    m = {k: list(v) for k, v in merged.items()}
+    follow = _compile(m["follow_up"])
+    return {
+        "strong": _compile(m["strong"]), "weak": _compile(m["weak"]),
+        "quick": _compile(m["quick"]), "verbs": _compile(m["quick_verbs"]), "code": _compile(m["code_words"]), "advice": _compile(m["advice"]), "work": _compile(m["work"]), "multi": _compile(m["multi_file"]),
+        "stop": frozenset(m["stopwords"]),
+        # (?![a-z0-9_]) instead of \b: CJK words are not separated by word boundaries
+        "follow": re.compile(r"^\s*(?:" + "|".join(p.pattern for p in follow) + r")(?![a-z0-9_]).{0,40}$")
+                  if follow else None,
+    }
+
+
+def _pack():
+    return pack(str(config.home() / "lang"))
+
 
 OVERRIDES = {"!quick": "quick", "!builder": "builder",
              "!architect": "architect", "!direct": "direct"}
 
-STOPWORDS = set("""
-a an the and or but if then else of to in on at by for with from into onto is are was were be been
-it its this that these those i you he she we they me my your our their do does did done can could
-should would will just so as not no yes please also there here than too very
-le la les un une des du de d l et ou mais si alors dans sur au aux par pour avec sans est sont etre
-ce cet cette ces je tu il elle nous vous ils elles mon ma mes ton ta tes son sa ses notre votre leur
-que qui quoi ne pas plus moins tres aussi y en se sa fait faire peux peut
-""".split())
-
 
 def normalise(text: str) -> str:
-    text = unicodedata.normalize("NFKD", text.lower())
-    return "".join(c for c in text if not unicodedata.combining(c))
+    out = []
+    for c in unicodedata.normalize("NFKD", text.lower()):
+        if unicodedata.combining(c) and out and out[-1].isascii() and out[-1].isalpha():
+            continue  # accent on a Latin letter; marks on kana, Cyrillic... are kept
+        out.append(c)
+    return unicodedata.normalize("NFC", "".join(out))
+
+
+def count_words(text: str) -> int:
+    """Whitespace words, with CJK counted as about two characters per word."""
+    return len(CJK.sub(" ", text).split()) + (len(CJK.findall(text)) + 1) // 2
 
 
 def tokenize(text: str) -> list[str]:
     """Content words of a prompt, normalised. Used for kNN and learned weights."""
-    words = re.findall(r"[a-z0-9_]+", normalise(text))
-    return [w for w in words if len(w) >= 3 and w not in STOPWORDS and not w.isdigit()]
+    text = normalise(text)
+    stop = _pack()["stop"]
+    words = re.findall(r"\w+", CJK.sub(" ", text))
+    for run in CJK_RUN.findall(text):  # no spaces in CJK: character bigrams stand in for words
+        words += [run[i:i + 2] for i in range(max(1, len(run) - 1))]
+    return [w for w in words if (len(w) >= 3 or CJK.match(w)) and w not in stop and not w.isdigit()]
 
 
 @dataclass
@@ -88,6 +97,8 @@ class Signals:
     strong: int = 0
     weak: int = 0
     quick: bool = False
+    advice: bool = False  # asks how/why/what is best: needs judgment, never a lookup
+    work: bool = False    # refactor / implement / create: more than a small edit
     multi: bool = False
     words: int = 0
     follow_up: bool = False
@@ -108,16 +119,22 @@ def _count(patterns, text) -> int:
 
 def signals(prompt: str, extra_strong=(), extra_weak=(), extra_quick=()) -> Signals:
     text = normalise(prompt).strip()
-    s = Signals(words=len(text.split()))
+    s = Signals(words=count_words(text))
+    p = _pack()
     for flag, tier in OVERRIDES.items():
         if text.startswith(flag):
             s.override = tier
             return s
-    s.strong = _count(list(STRONG) + list(extra_strong), text)
-    s.weak = _count(list(WEAK) + list(extra_weak), text)
-    s.quick = _count(list(QUICK) + list(extra_quick), text) > 0
-    s.multi = _count(MULTI_FILE, text) > 0
-    s.follow_up = bool(FOLLOW_UP.match(text)) and s.words <= 6 and not s.strong
+    s.strong = _count(p["strong"] + list(extra_strong), text)
+    s.weak = _count(p["weak"] + list(extra_weak), text)
+    # Leading verbs like "show" or "list" are a lookup only when the prompt is tiny or points at
+    # code; otherwise they ask for a feature ("show an error toast when the upload fails").
+    anchored = bool(ANCHOR.search(prompt)) or _count(p["code"], text) > 0 or s.words <= 5
+    s.quick = _count(p["quick"] + list(extra_quick), text) > 0 or (anchored and _count(p["verbs"], text) > 0)
+    s.advice = _count(p["advice"], text) > 0
+    s.work = _count(p["work"], text) > 0
+    s.multi = _count(p["multi"], text) > 0
+    s.follow_up = bool(p["follow"] and p["follow"].match(text)) and s.words <= 6 and not s.strong
     return s
 
 
@@ -136,7 +153,7 @@ def base_score(s: Signals) -> tuple[float, list[str]]:
     if s.words > 120:
         pts += 1
         why.append("long")
-    if s.quick and not s.strong:
+    if s.quick and not (s.strong or s.advice or s.work) and s.words <= 20:
         pts -= 3  # a lookup stays simple even if it mentions "auth"
         why.append("lookup/small edit")
     if s.words < 12 and not s.strong and s.weak < 3:

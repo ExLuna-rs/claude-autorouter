@@ -36,6 +36,8 @@ class RulesTest(Isolated):
         ("rename userId to accountId in utils.ts", "quick"),
         ("what does this docker-compose file do?", "quick"),
         ("où est défini le middleware d'auth ?", "quick"),
+        ("explain how the retry loop works", "quick"),
+        ("explique-moi ce que fait ce fichier", "quick"),
         ("add a GET /health endpoint returning the database status", "builder"),
         ("write unit tests for the CSV parser", "builder"),
         ("fix the bug in the orders list pagination", "builder"),
@@ -45,6 +47,16 @@ class RulesTest(Isolated):
         ("security audit of the licence server, look for vulnerabilities", "architect"),
         ("audit de sécurité du serveur de licences", "architect"),
         ("migrate the project from Vue 2 to Vue 3", "architect"),
+        ("¿Dónde está definido el middleware de autenticación?", "quick"),
+        ("diseña la arquitectura de una cola distribuida", "architect"),
+        ("Wo ist die Authentifizierung definiert?", "quick"),
+        ("Warum stürzt die App zufällig ab?", "architect"),
+        ("Onde está definido o middleware?", "quick"),
+        ("projete a arquitetura de uma fila distribuída", "architect"),
+        ("认证中间件在哪里定义的？", "quick"),
+        ("为什么应用启动时随机崩溃？", "architect"),
+        ("認証ミドルウェアはどこで定義されていますか？", "quick"),
+        ("分散ジョブキューのアーキテクチャを設計して", "architect"),
         ("optimise the render thread performance, there is a concurrency issue", "architect"),
     ]
 
@@ -54,9 +66,20 @@ class RulesTest(Isolated):
                 self.assertEqual(self.tier(prompt), expected)
 
     def test_follow_up_is_direct(self):
-        for p in ["ok", "yes go ahead", "oui vas-y", "merci !", "continue"]:
+        for p in ["ok", "yes go ahead", "oui vas-y", "merci !", "continue", "好的，继续", "ありがとう", "danke"]:
             with self.subTest(p=p):
                 self.assertEqual(self.tier(p), "direct")
+
+    def test_non_latin_prompts_are_tokenised(self):
+        self.assertIn("добавь", features.tokenize("добавь эндпоинт /health"))
+        self.assertIn("中间", features.tokenize("认证中间件"))
+
+    def test_user_language_pack(self):
+        lang = config.home() / "lang"
+        lang.mkdir(parents=True, exist_ok=True)
+        (lang / "ru.json").write_text(json.dumps({"strong": ["архитектур"]}), encoding="utf-8")
+        (lang / "broken.json").write_text("{not json", encoding="utf-8")
+        self.assertEqual(self.tier("спроектируй архитектуру очереди задач"), "architect")
 
     def test_long_follow_up_is_routed(self):
         self.assertNotEqual(self.tier("ok now design the architecture of the sync engine"), "direct")
@@ -132,12 +155,12 @@ def done(tokens=20000, tools=6):
 
 class LearningTest(Isolated):
     def test_repeated_escalations_route_higher(self):
-        prompt = "show the retry logic in the http client"
+        prompt = "where is the retry logic in the http client"
         self.assertEqual(self.tier(prompt), "quick")
-        variants = ["show the retry logic in the http client module",
-                    "show me the retry logic of the http client",
-                    "show the http client retry logic and backoff",
-                    "show where the http client retry logic lives"]
+        variants = ["where is the retry logic in the http client module",
+                    "where is the retry logic of the http client",
+                    "where is the http client retry logic and backoff",
+                    "where does the http client retry logic live"]
         for i, v in enumerate(variants):
             run_task("s1", v, [("quick", escalation()), ("builder", done())])
         hooks.on_prompt({"prompt": "unrelated: rename a to b", "session_id": "s1", "cwd": "/work/app"})

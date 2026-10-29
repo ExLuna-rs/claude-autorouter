@@ -185,7 +185,7 @@ INSTRUCTION = {
     "quick": "delegate to subagent `{agent}`; relay its result in 1-2 sentences.",
     # The orchestrator is Sonnet too: delegating to a Sonnet subagent only pays
     # off when it keeps a lot of exploration out of the main context.
-    "builder": ("do it yourself; delegate to `{agent}` only if it spans many files or a long exploration."
+    "builder": ("do it yourself; delegate to `{agent}` if it needs reading more than ~3 files or a broad search."
                 " If you get stuck, or it turns out to involve architecture or security,"
                 " delegate to `{up}` with a HANDOFF block (files, found, ruled out)."),
     "architect": "delegate to subagent `{agent}` with the full context it needs.",

@@ -1,0 +1,121 @@
+{
+ "strong": [
+  "\\barquitectur",
+  "\\bdiseno\\b",
+  "\\bvulnerab",
+  "\\bmigrar\\b",
+  "\\bmigracion",
+  "\\bcondicion de carrera",
+  "\\bfuga de memoria",
+  "\\bintermitente",
+  "\\baleatori",
+  "\\bpor que\\b.*\\b(falla|se cuelga|se cae|no funciona|crashea)",
+  "\\bcriptograf",
+  "\\bdistribuid[oa]",
+  "\\bescalab",
+  "\\bcausa raiz\\b",
+  "\\brefactoriz\\w*\\s+(todo|completo|entero)"
+ ],
+ "weak": [
+  "\\bseguridad\\b",
+  "\\bautentic",
+  "\\brendimiento",
+  "\\bbase de datos\\b",
+  "\\besquema\\b",
+  "\\bdepur"
+ ],
+ "quick": [
+  "^[\\s¿¡]*(donde|en que archivo)",
+  "^[\\s¿¡]*(que es|que hace)\\b",
+  "^[\\s¿¡]*cuant[oa]s\\b",
+  "\\brenombr",
+  "\\bimport faltante",
+  "\\bformatea",
+  "\\bcomentario",
+  "\\bexplica",
+  "\\bresum[eio]"
+ ],
+ "multi_file": [
+  "\\btodos los archivos\\b",
+  "\\bvarios archivos\\b",
+  "\\btodo el (repo|proyecto|codigo)\\b",
+  "\\bproyecto entero\\b"
+ ],
+ "follow_up": [
+  "vale",
+  "de acuerdo",
+  "adelante",
+  "continua",
+  "gracias",
+  "perfecto",
+  "listo",
+  "hazlo",
+  "dale"
+ ],
+ "stopwords": [
+  "el",
+  "la",
+  "los",
+  "las",
+  "un",
+  "una",
+  "unos",
+  "unas",
+  "de",
+  "del",
+  "y",
+  "o",
+  "pero",
+  "en",
+  "con",
+  "por",
+  "para",
+  "que",
+  "es",
+  "son",
+  "ser",
+  "esta",
+  "este",
+  "esto",
+  "estos",
+  "mi",
+  "tu",
+  "su",
+  "nos",
+  "se",
+  "lo",
+  "al",
+  "muy",
+  "mas",
+  "tambien"
+ ],
+ "advice": [
+  "\\bcomo\\s+(puedo|podemos|debo|deberia|hacer)",
+  "\\bpor que\\b",
+  "\\bmejor (forma|manera|practica)",
+  "\\bdeberia",
+  "\\brecomiend"
+ ],
+ "work": [
+  "\\brefactoriz",
+  "\\bimplement",
+  "\\breescrib",
+  "\\bcrea\\b"
+ ],
+ "quick_verbs": [
+  "^[\\s¿¡]*(busca|encuentra|lista|muestra|localiza)\\b",
+  "^[\\s¿¡]*(lee|abre)\\b"
+ ],
+ "code_words": [
+  "\\barchivos?\\b",
+  "\\bfunci(on|ones)\\b",
+  "\\bclases?\\b",
+  "\\bvariables?\\b",
+  "\\bcarpetas?\\b",
+  "\\bdirectorios?\\b",
+  "\\bgit\\b",
+  "\\bcommits?\\b",
+  "\\bconfig",
+  "\\bscripts?\\b"
+ ]
+}
