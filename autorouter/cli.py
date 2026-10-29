@@ -52,7 +52,8 @@ def cmd_stats(args):
         print("No data yet. Use Claude Code normally; stats appear after a few tasks.")
         return
 
-    print(f"{'tier':<{TIER_W}} {'tasks':>6} {'share':>6} {'escal.':>7} {'overkill':>9} {'cost/task':>10}")
+    delegated_ids = {o["decision_id"] for o in outs if o["decision_id"]}
+    print(f"{'tier':<{TIER_W}} {'tasks':>6} {'share':>6} {'escal.':>7} {'overkill':>9} {'cost/task':>10}  in main")
     for t in config.DELEGATED:
         tr = [r for r in rows if r["tier"] == t]
         if not tr:
@@ -61,7 +62,8 @@ def cmd_stats(args):
         ok = sum(r["overkill"] for r in tr) / len(tr)
         costs = [r["cost"] for r in tr if r["cost"]]
         avg = f"{sum(costs) / len(costs):,.0f}" if costs else "-"
-        print(f"{t:<{TIER_W}} {len(tr):>6} {len(tr) / len(rows):>6.0%} {esc:>7.0%} {ok:>9.0%} {avg:>10}")
+        inline = sum(r["id"] not in delegated_ids for r in tr) / len(tr)
+        print(f"{t:<{TIER_W}} {len(tr):>6} {len(tr) / len(rows):>6.0%} {esc:>7.0%} {ok:>9.0%} {avg:>10}  {inline:>7.0%}")
 
     costed = [r for r in rows if r["cost"]]
     if costed:
@@ -73,7 +75,8 @@ def cmd_stats(args):
             a = sum(r["cost"] for r in older[:half]) / half
             b = sum(r["cost"] for r in older[half:]) / (len(older) - half)
             trend = f"  (first half {a:,.0f} -> second half {b:,.0f}, {b / a - 1:+.0%})"
-        print(f"\ncost per task (weighted tokens): {mean:,.0f}{trend}")
+        print("\nin main: tasks handled by the main session without a subagent (expected for builder).")
+        print(f"cost per task (weighted tokens): {mean:,.0f}{trend}")
 
         # Rough baseline: the same tokens, priced as if every model were Opus.
         opus = config.model_weight(s, "opus")

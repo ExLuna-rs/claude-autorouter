@@ -29,7 +29,7 @@ flowchart LR
     DB --> H
 ```
 
-1. **Route.** A `UserPromptSubmit` hook scores the prompt (English and French rules), adds learned per-word weights, looks up similar past tasks, and injects one short line telling the main session (Sonnet, the orchestrator) which subagent to delegate to. Follow-ups such as "ok go ahead" are not routed.
+1. **Route.** A `UserPromptSubmit` hook scores the prompt (English and French rules), adds learned per-word weights, looks up similar past tasks, and injects one short line telling the main session (Sonnet, the orchestrator) what to do. `quick` and `architect` tasks are delegated to their subagents. `builder` tasks are handled by the orchestrator itself, since it is Sonnet too and a subagent's cold start costs more than it saves; it delegates to the `builder` subagent only for large tasks whose exploration would clutter the main context, and to `architect` (with a hand-off) if it gets stuck. Follow-ups such as "ok go ahead" are not routed.
 2. **Escalate.** Subagents that hit something beyond their tier stop and answer `ESCALATE:` with a `HANDOFF` block (files read, facts found, hypotheses ruled out). The orchestrator re-delegates one tier up, and the next tier starts from the hand-off instead of re-exploring.
 3. **Measure.** A `PostToolUse` hook records each delegated run (tokens, tool calls, escalation). A `Stop` hook adds the main session's own token usage for the turn, read from the transcript.
 4. **Learn.** Three mechanisms, all local:
@@ -53,7 +53,7 @@ Learning only from escalations would ratchet everything up to Opus, so the route
 - **Terse subagent reports.** A subagent's report stays in the orchestrator's context for every later turn, so reports have a hard word budget (60 / 150 / 250 words) and a fixed, filler-free format.
 - **No duplicated exploration.** Escalations carry a `HANDOFF` block, so the next tier does not re-read the same files.
 - **Small, stable injected context.** One line (about 30 tokens) with a constant prefix, so it plays well with prompt caching.
-- **Follow-ups are not delegated**, because spawning a subagent costs a cold start.
+- **No needless delegation.** Follow-ups and ordinary `builder` work stay in the main session, because spawning a subagent costs a cold start. `/router-stats` shows how often each tier was handled "in main".
 - **Optional context hygiene** (`--hygiene`): denies reads of lockfiles, `node_modules`, build output and minified bundles.
 
 ## Install

@@ -183,7 +183,11 @@ PLUGIN_NAME = "autorouter"
 
 INSTRUCTION = {
     "quick": "delegate to subagent `{agent}`; relay its result in 1-2 sentences.",
-    "builder": "delegate to subagent `{agent}`; relay its report as is.",
+    # The orchestrator is Sonnet too: delegating to a Sonnet subagent only pays
+    # off when it keeps a lot of exploration out of the main context.
+    "builder": ("do it yourself; delegate to `{agent}` only if it spans many files or a long exploration."
+                " If you get stuck, or it turns out to involve architecture or security,"
+                " delegate to `{up}` with a HANDOFF block (files, found, ruled out)."),
     "architect": "delegate to subagent `{agent}` with the full context it needs.",
 }
 
@@ -197,8 +201,9 @@ def context_line(d: Decision) -> str | None:
     """Short, stable-prefix instruction injected before the model sees the prompt."""
     if d.tier == "direct":
         return None
-    line = f"[router] tier={d.tier}: " + INSTRUCTION[d.tier].format(agent=agent_name(d.tier))
-    if d.tier != "architect":
+    line = f"[router] tier={d.tier}: " + INSTRUCTION[d.tier].format(
+        agent=agent_name(d.tier), up=agent_name("architect"))
+    if d.tier == "quick":
         line += " On `ESCALATE:`, re-delegate one tier up with its HANDOFF block."
     if d.capped:
         line += f" Opus daily budget reached: ask the user before using `{agent_name('architect')}`."

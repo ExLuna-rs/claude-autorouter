@@ -97,7 +97,19 @@ class RulesTest(Isolated):
     def test_context_line_is_short(self):
         for p, _ in self.CASES:
             line = router.context_line(router.route(p, cwd="/w"))
-            self.assertLess(len(line.split()), 40, line)
+            self.assertLess(len(line.split()), 50, line)
+
+    def test_builder_line_allows_inline_work_and_escalation(self):
+        line = router.context_line(router.route("add a GET /health endpoint returning the DB status", cwd="/w"))
+        self.assertIn("do it yourself", line)
+        self.assertIn("`architect`", line)
+        self.assertIn("HANDOFF", line)
+
+    def test_inline_builder_then_architect_counts_as_escalation(self):
+        run_task("ib", "add a GET /health endpoint returning the DB status", [("architect", done())])
+        with store.connect() as conn:
+            d = conn.execute("SELECT * FROM decisions").fetchone()
+        self.assertEqual((d["tier"], d["final_tier"], d["escalations"]), ("builder", "architect", 1))
 
 
 def run_task(session, prompt, runs, cwd="/work/app"):
