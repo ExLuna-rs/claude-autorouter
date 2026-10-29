@@ -101,6 +101,24 @@ The hooks call the Python interpreter that ran the script by its absolute path. 
 
 Restart Claude Code and check with `/agents`.
 
+### Check which models your tiers really use
+
+The agents ask for `haiku`, `sonnet` and `opus`, which are **aliases**. Claude Code resolves them through its own alias table, **not** through the model you picked with `/model`. Your main session can therefore run the latest models while the subagents still get older ones, for example when `ANTHROPIC_DEFAULT_HAIKU_MODEL`, `ANTHROPIC_DEFAULT_SONNET_MODEL` or `ANTHROPIC_DEFAULT_OPUS_MODEL` is set to an older ID in your shell or settings, or when your Claude Code version is out of date.
+
+To check, open a subagent transcript in `~/.claude/projects/<project>/<session>/subagents/` and look at the `"model"` field of its responses.
+
+To fix it, update Claude Code (`claude update`) and set the aliases explicitly in `~/.claude/settings.json`, using the current model IDs of your account (shown here for the 5.5 generation):
+
+```json
+"env": {
+  "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-5-5",
+  "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-5-5",
+  "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-5-5"
+}
+```
+
+Remove or update these lines when a newer generation comes out, or the aliases will stay pinned. Also look for the same variables in your shell profile (`~/.zshrc`, `~/.bashrc`, PowerShell profile), which can override the settings file.
+
 ## Usage
 
 Nothing to do: every prompt is routed. To see why a prompt goes where it goes:
