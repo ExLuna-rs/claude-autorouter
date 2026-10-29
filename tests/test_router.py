@@ -258,6 +258,17 @@ class HookProcessTest(Isolated):
             self.assertEqual(r.returncode, 0, r.stderr)
 
 
+class AgentPromptTest(unittest.TestCase):
+    def test_agents_carry_their_rules(self):
+        agents = ROOT / "agents"
+        for name in ["builder.md", "architect.md"]:
+            text = (agents / name).read_text(encoding="utf-8")
+            self.assertIn("least code that works", text, name)
+            self.assertIn("ESCALATE" if name == "builder.md" else "conclusion:", text, name)
+        for name, model in [("quick.md", "haiku"), ("builder.md", "sonnet"), ("architect.md", "opus")]:
+            self.assertIn(f"model: {model}", (agents / name).read_text(encoding="utf-8"))
+
+
 class InstallTest(unittest.TestCase):
     def test_install_is_idempotent_and_uninstalls(self):
         with tempfile.TemporaryDirectory() as home:
