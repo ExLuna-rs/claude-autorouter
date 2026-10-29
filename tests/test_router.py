@@ -263,13 +263,38 @@ class AgentPromptTest(unittest.TestCase):
         agents = ROOT / "agents"
         for name in ["builder.md", "architect.md"]:
             text = (agents / name).read_text(encoding="utf-8")
-            self.assertIn("least code that works", text, name)
+            self.assertIn("<!-- ponytail:start -->", text, name)
+            self.assertIn("<!-- ponytail:end -->", text, name)
             self.assertIn("ESCALATE" if name == "builder.md" else "conclusion:", text, name)
         for name, model in [("quick.md", "haiku"), ("builder.md", "sonnet"), ("architect.md", "opus")]:
             self.assertIn(f"model: {model}", (agents / name).read_text(encoding="utf-8"))
 
 
 class InstallTest(unittest.TestCase):
+    def install(self, settings):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        claude = Path(tmp.name) / ".claude"
+        claude.mkdir()
+        (claude / "settings.json").write_text(json.dumps(settings))
+        env = {**os.environ, "CLAUDE_HOME": str(claude)}
+        r = subprocess.run([sys.executable, str(ROOT / "install.py")], capture_output=True, text=True, env=env)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return claude, r.stdout
+
+    def test_ponytail_kept_without_plugin(self):
+        claude, _ = self.install({})
+        self.assertIn("lazy senior developer", (claude / "agents" / "builder.md").read_text(encoding="utf-8"))
+
+    def test_ponytail_skipped_when_plugin_enabled(self):
+        claude, out = self.install({"enabledPlugins": {"ponytail@ponytail": True}})
+        for name in ["builder.md", "architect.md"]:
+            text = (claude / "agents" / name).read_text(encoding="utf-8")
+            self.assertNotIn("ponytail:start", text)
+            self.assertIn("## Report format", text)
+            self.assertNotIn("\n\n\n", text)
+        self.assertIn("Ponytail plugin detected", out)
+
     def test_install_is_idempotent_and_uninstalls(self):
         with tempfile.TemporaryDirectory() as home:
             claude = Path(home) / ".claude"

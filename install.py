@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -75,11 +76,27 @@ def strip_hooks(cfg: dict):
         cfg.pop("hooks", None)
 
 
+PONYTAIL = re.compile(r"\n?<!-- ponytail:start -->.*?<!-- ponytail:end -->\n?", re.S)
+
+
+def ponytail_plugin_enabled(cfg: dict) -> bool:
+    """The Ponytail plugin injects its rules into every subagent already."""
+    plugins = cfg.get("enabledPlugins") or {}
+    return any(k.split("@")[0] == "ponytail" and v for k, v in plugins.items())
+
+
 def install(hygiene: bool):
+    path = CLAUDE / "settings.json"
+    cfg = load_settings(path)
+    strip_ponytail = ponytail_plugin_enabled(cfg)
+
     for d in ("agents", "commands"):
         (CLAUDE / d).mkdir(parents=True, exist_ok=True)
     for name in AGENTS:
-        shutil.copy2(SRC / "agents" / name, CLAUDE / "agents" / name)
+        text = (SRC / "agents" / name).read_text(encoding="utf-8")
+        if strip_ponytail:
+            text = re.sub(r"\n{3,}", "\n\n", PONYTAIL.sub("\n", text))
+        (CLAUDE / "agents" / name).write_text(text, encoding="utf-8")
     for name in COMMANDS:
         text = (SRC / "commands" / name).read_text(encoding="utf-8")
         (CLAUDE / "commands" / name).write_text(text.replace("{{RUN}}", RUN), encoding="utf-8")
@@ -91,13 +108,13 @@ def install(hygiene: bool):
                     ignore=shutil.ignore_patterns("__pycache__"))
     shutil.copy2(SRC / "run.py", DEST / "run.py")
 
-    path = CLAUDE / "settings.json"
-    cfg = load_settings(path)
     strip_hooks(cfg)
     for event, entry in HOOKS.items():
         cfg.setdefault("hooks", {}).setdefault(event, []).append(entry)
 
     notes = []
+    if strip_ponytail:
+        notes.append("Ponytail plugin detected: its rules reach the agents already, built-in copy skipped")
     if "model" not in cfg:
         cfg["model"] = "sonnet"
         notes.append("main session model set to sonnet (the orchestrator)")

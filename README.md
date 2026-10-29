@@ -49,7 +49,7 @@ Learning only from escalations would ratchet everything up to Opus, so the route
 
 ### Token savings beyond model choice
 
-- **Less code, not just fewer words.** `builder` and `architect` follow a minimal-code ladder before writing anything (is it needed, does it already exist, does the standard library cover it, can a small change do it), inspired by [Ponytail](https://github.com/DietrichGebert/ponytail). Less code written means fewer output tokens, and less code to read back later.
+- **Less code, not just fewer words.** `builder` and `architect` ship with the ruleset of [Ponytail](https://github.com/DietrichGebert/ponytail) (MIT, see `THIRD_PARTY_NOTICES.md`): before writing, they check whether the code is needed, already exists, or is covered by the standard library, and they make the smallest complete change. Less code written means fewer output tokens and less code to read back. If you install the Ponytail plugin itself, which also injects its rules into subagents, the installer detects it and skips the built-in copy so the rules are not paid for twice.
 - **Terse subagent reports.** A subagent's report stays in the orchestrator's context for every later turn, so reports have a hard word budget (60 / 150 / 250 words) and a fixed, filler-free format.
 - **No duplicated exploration.** Escalations carry a `HANDOFF` block, so the next tier does not re-read the same files.
 - **Small, stable injected context.** One line (about 30 tokens) with a constant prefix, so it plays well with prompt caching.
@@ -151,7 +151,7 @@ python3 -m unittest discover -s tests
 - [tzachbon/claude-model-router-hook](https://github.com/tzachbon/claude-model-router-hook), [misterkante/cc-model-router](https://github.com/misterkante/cc-model-router), [IuriiTurok/auto-model-router](https://github.com/IuriiTurok/auto-model-router): hook-based tier routing for Claude Code.
 - [musistudio/claude-code-router](https://github.com/musistudio/claude-code-router): a proxy that routes Claude Code requests across providers (API keys).
 - Caveman: a skill that makes Claude answer tersely to save output tokens. It is complementary to this project.
-- [Ponytail](https://github.com/DietrichGebert/ponytail): the "laziest senior developer" skill that inspired the minimal-code ladder used by `builder` and `architect`. Install it as well if you want the same discipline in your main session.
+- [Ponytail](https://github.com/DietrichGebert/ponytail): the "lazy senior developer" ruleset bundled in `builder` and `architect`. Install the plugin (`/plugin marketplace add DietrichGebert/ponytail`, then `/plugin install ponytail@ponytail`) to apply it to your main session too and get its updates; re-run `install.py` afterwards.
 - rtk: filters noisy shell output (tests, builds, logs) before it reaches the context. It is complementary, and often the largest saving in long sessions.
 
 ## License
