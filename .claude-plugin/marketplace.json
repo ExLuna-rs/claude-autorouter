@@ -1,0 +1,24 @@
+{
+  "name": "exluna",
+  "description": "Plugins by ExLuna-rs: Autorouter, a cost-aware model router for Claude Code, and its dependency Ponytail.",
+  "owner": { "name": "Corentin Janson", "url": "https://github.com/ExLuna-rs" },
+  "plugins": [
+    {
+      "name": "autorouter",
+      "source": "./",
+      "description": "Routes each prompt to Haiku, Sonnet or Opus, escalates with hand-off, learns from outcomes to cut tokens.",
+      "category": "productivity"
+    },
+    {
+      "name": "ponytail",
+      "source": {
+        "source": "github",
+        "repo": "DietrichGebert/ponytail",
+        "ref": "v5.3.3",
+        "sha": "7801d061243d7b753bad0e0b3c057cd250b11755"
+      },
+      "description": "Lazy senior dev mode by Dietrich Gebert (MIT): the smallest complete change. Required by Autorouter; pinned to release v5.3.3.",
+      "category": "productivity"
+    }
+  ]
+}

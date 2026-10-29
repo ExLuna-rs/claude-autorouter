@@ -2,7 +2,7 @@
 
 ## Ponytail
 
-`agents/builder.md` and `agents/architect.md` include the ruleset of the Ponytail skill (`skills/ponytail/SKILL.md`, "full" level), lightly adapted for subagents: session-level commands and level switching were removed.
+`vendor/ponytail/RULES.md` contains the ruleset of the Ponytail skill (`skills/ponytail/SKILL.md` at v5.3.3, "full" level), lightly adapted for subagents: session-level commands and level switching were removed. `install.py` inserts it into the `builder` and `architect` agents. The plugin install does not use this copy: it installs the Ponytail plugin itself as a dependency, pinned in `.claude-plugin/marketplace.json`.
 
 Source: https://github.com/DietrichGebert/ponytail
 

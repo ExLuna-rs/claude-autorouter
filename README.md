@@ -49,7 +49,7 @@ Learning only from escalations would ratchet everything up to Opus, so the route
 
 ### Token savings beyond model choice
 
-- **Less code, not just fewer words.** `builder` and `architect` ship with the ruleset of [Ponytail](https://github.com/DietrichGebert/ponytail) (MIT, see `THIRD_PARTY_NOTICES.md`): before writing, they check whether the code is needed, already exists, or is covered by the standard library, and they make the smallest complete change. Less code written means fewer output tokens and less code to read back. If you install the Ponytail plugin itself, which also injects its rules into subagents, the installer detects it and skips the built-in copy so the rules are not paid for twice.
+- **Less code, not just fewer words.** `builder` and `architect` follow [Ponytail](https://github.com/DietrichGebert/ponytail) by Dietrich Gebert: before writing, they check whether the code is needed, already exists, or is covered by the standard library, and they make the smallest complete change. Less code written means fewer output tokens and less code to read back. The plugin install pulls in Ponytail as a dependency; the script install embeds its rules (MIT, see `THIRD_PARTY_NOTICES.md`).
 - **Terse subagent reports.** A subagent's report stays in the orchestrator's context for every later turn, so reports have a hard word budget (60 / 150 / 250 words) and a fixed, filler-free format.
 - **No duplicated exploration.** Escalations carry a `HANDOFF` block, so the next tier does not re-read the same files.
 - **Small, stable injected context.** One line (about 30 tokens) with a constant prefix, so it plays well with prompt caching.
@@ -58,28 +58,54 @@ Learning only from escalations would ratchet everything up to Opus, so the route
 
 ## Install
 
-Requires Claude Code and Python 3.9+. Works on macOS, Linux and Windows.
+Two ways to install. Use one, not both.
+
+### As a plugin (recommended)
+
+Requires Claude Code 2.1.275+, Python 3.9+ and Node.js (Ponytail's hooks run on Node). Works on macOS, Linux and Windows. In Claude Code:
+
+```
+/plugin install autorouter --marketplace ExLuna-rs/claude-autorouter
+```
+
+On older versions, send these two commands separately:
+
+```
+/plugin marketplace add ExLuna-rs/claude-autorouter
+/plugin install autorouter@exluna
+```
+
+This installs **Autorouter and its dependency [Ponytail](https://github.com/DietrichGebert/ponytail)** (pinned to a release), with the agents, hooks and commands enabled. Updates come through `/plugin`. Plugin components are namespaced: the agents are `autorouter:quick`, `autorouter:builder` and `autorouter:architect`, and the commands are `/autorouter:router-stats` and `/autorouter:router-learn`.
+
+A plugin cannot change your settings, so set the orchestrator model yourself with `/model sonnet` (an Opus main session works but costs more), and remove `CLAUDE_CODE_SUBAGENT_MODEL` from your environment or settings if you set it, because it overrides per-agent models.
+
+Ponytail has its own options in `/config`. Its task board, which writes a CSV of each task to `~/.config/ponytail/`, is on by default.
+
+### With the install script (no Node.js)
+
+Requires Python 3.9+.
 
 ```bash
 git clone https://github.com/ExLuna-rs/claude-autorouter.git
 cd claude-autorouter
-python3 install.py            # add --hygiene to block reads of bulky files
+python3 install.py            # Windows: py install.py. Add --hygiene to block reads of bulky files
 ```
 
-On Windows (PowerShell), run the installer with `py install.py` (or `python install.py`).
+The script copies the three agents (with Ponytail's rules built in, see `THIRD_PARTY_NOTICES.md`) and two commands into `~/.claude/`, installs the router in `~/.claude/autorouter/`, and registers three hooks in `~/.claude/settings.json`. A backup of that file is saved as `settings.json.bak`. The script is idempotent, so run it again to upgrade. It also:
 
-The hooks are pinned to the Python interpreter that ran the installer, written as an absolute path, so they work whether your shell knows `python3`, `python` or `py`. If you later remove that interpreter (a deleted venv, for example), run the installer again.
+- sets the main session model to `sonnet` if you have not set one;
+- removes `CLAUDE_CODE_SUBAGENT_MODEL` from the settings;
+- skips the built-in Ponytail rules if the Ponytail plugin is enabled, so they are not paid for twice.
 
-The installer copies three agents and two commands into `~/.claude/`, installs the router in `~/.claude/autorouter/`, and registers three hooks in `~/.claude/settings.json` (a backup is saved as `settings.json.bak`). It is idempotent, so run it again to upgrade. It also:
-
-- sets the main session model to `sonnet` if you have not set one (Sonnet is the orchestrator);
-- removes `CLAUDE_CODE_SUBAGENT_MODEL` from the settings, because it overrides per-agent models.
+The hooks call the Python interpreter that ran the script by its absolute path. If you later remove that interpreter (a deleted venv, for example), run the script again.
 
 Restart Claude Code and check with `/agents`.
 
 ## Usage
 
 Nothing to do: every prompt is routed. To see why a prompt goes where it goes:
+
+Ask Claude to run `/autorouter:router-stats`, or call the router directly. The CLI below is the script-install path; with the plugin, run the same `run.py` from the plugin folder.
 
 ```bash
 python3 ~/.claude/autorouter/run.py explain "migrate the auth module to OAuth"
@@ -97,8 +123,8 @@ Force a tier by starting a prompt with a prefix. The router also learns from the
 
 Slash commands:
 
-- **`/router-stats`**: tasks per tier, escalation and overkill rates, cost per task and its trend, savings against the same tokens on Opus, and learned words.
-- **`/router-learn`**: reviews recent misroutes and proposes new patterns for `config.json`, which you approve before they are applied.
+- **`/router-stats`** (`/autorouter:router-stats` with the plugin): tasks per tier, escalation and overkill rates, cost per task and its trend, savings against the same tokens on Opus, and learned words.
+- **`/router-learn`** (`/autorouter:router-learn` with the plugin): reviews recent misroutes and proposes new patterns for `config.json`, which you approve before they are applied.
 
 ## Configuration
 
@@ -136,9 +162,12 @@ python3 ~/.claude/autorouter/run.py reset --all --yes       # forget everything
 
 ## Uninstall
 
-```bash
-python3 install.py --uninstall   # keeps learned data; delete ~/.claude/autorouter to erase it
 ```
+/plugin uninstall autorouter@exluna          # plugin install
+python3 install.py --uninstall               # script install
+```
+
+Learned data stays in `~/.claude/autorouter/`. Delete that folder to erase it.
 
 ## Development
 
@@ -151,7 +180,7 @@ python3 -m unittest discover -s tests
 - [tzachbon/claude-model-router-hook](https://github.com/tzachbon/claude-model-router-hook), [misterkante/cc-model-router](https://github.com/misterkante/cc-model-router), [IuriiTurok/auto-model-router](https://github.com/IuriiTurok/auto-model-router): hook-based tier routing for Claude Code.
 - [musistudio/claude-code-router](https://github.com/musistudio/claude-code-router): a proxy that routes Claude Code requests across providers (API keys).
 - Caveman: a skill that makes Claude answer tersely to save output tokens. It is complementary to this project.
-- [Ponytail](https://github.com/DietrichGebert/ponytail): the "lazy senior developer" ruleset bundled in `builder` and `architect`. Install the plugin (`/plugin marketplace add DietrichGebert/ponytail`, then `/plugin install ponytail@ponytail`) to apply it to your main session too and get its updates; re-run `install.py` afterwards.
+- [Ponytail](https://github.com/DietrichGebert/ponytail): the "lazy senior developer" plugin that Autorouter depends on.
 - rtk: filters noisy shell output (tests, builds, logs) before it reaches the context. It is complementary, and often the largest saving in long sessions.
 
 ## License

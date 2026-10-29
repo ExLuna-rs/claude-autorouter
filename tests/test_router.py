@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -258,13 +259,66 @@ class HookProcessTest(Isolated):
             self.assertEqual(r.returncode, 0, r.stderr)
 
 
+@unittest.skipUnless(shutil.which("node"), "node not installed")
+class PluginTest(Isolated):
+    def node(self, *args, stdin=b"", env=None):
+        e = {**os.environ, "CLAUDE_PLUGIN_ROOT": str(ROOT), **(env or {})}
+        return subprocess.run(["node", str(ROOT / "scripts" / "run.js"), *args], input=stdin,
+                              capture_output=True, env=e, timeout=60)
+
+    def test_manifests(self):
+        from autorouter import __version__
+        plugin = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+        market = json.loads((ROOT / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
+        self.assertEqual(plugin["version"], __version__)
+        self.assertEqual(plugin["name"], router.PLUGIN_NAME)
+        names = [p["name"] for p in market["plugins"]]
+        for dep in plugin.get("dependencies", []):
+            self.assertIn(dep, names)
+        hooks_cfg = json.loads((ROOT / "hooks" / "hooks.json").read_text(encoding="utf-8"))
+        for event in ["UserPromptSubmit", "PostToolUse", "Stop"]:
+            cmd = hooks_cfg["hooks"][event][0]["hooks"][0]["command"]
+            self.assertIn('"${CLAUDE_PLUGIN_ROOT}/scripts/run.js"', cmd)
+        for name in ["router-stats.md", "router-learn.md"]:
+            self.assertIn("${CLAUDE_PLUGIN_ROOT}/scripts/run.js", (ROOT / "commands" / name).read_text(encoding="utf-8"))
+
+    def test_launcher_routes_with_namespaced_agents(self):
+        r = self.node("prompt", stdin=json.dumps({"prompt": "find the auth middleware", "session_id": "pl"}).encode())
+        self.assertEqual(r.returncode, 0, r.stderr)
+        ctx = json.loads(r.stdout)["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("`autorouter:quick`", ctx)
+
+    def test_launcher_cli(self):
+        r = self.node("explain", "design a distributed queue")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn(b"architect", r.stdout)
+
+    def test_plugin_defers_to_script_install(self):
+        with tempfile.TemporaryDirectory() as home:
+            Path(home, "settings.json").write_text(json.dumps({"hooks": {"UserPromptSubmit": [{"hooks": [
+                {"type": "command", "command": "python3 ~/.claude/autorouter/run.py prompt"}]}]}}))
+            r = self.node("prompt", stdin=json.dumps({"prompt": "find x", "session_id": "d"}).encode(),
+                          env={"CLAUDE_HOME": home})
+        self.assertEqual((r.returncode, r.stdout), (0, b""))
+
+    def test_plugin_agent_runs_are_learned(self):
+        os.environ["CLAUDE_PLUGIN_ROOT"] = str(ROOT)
+        try:
+            run_task("pa", "list the config loaders",
+                     [("autorouter:quick", escalation()), ("autorouter:builder", done())])
+        finally:
+            del os.environ["CLAUDE_PLUGIN_ROOT"]
+        with store.connect() as conn:
+            d = conn.execute("SELECT * FROM decisions").fetchone()
+        self.assertEqual((d["escalations"], d["final_tier"]), (1, "builder"))
+
+
 class AgentPromptTest(unittest.TestCase):
     def test_agents_carry_their_rules(self):
         agents = ROOT / "agents"
         for name in ["builder.md", "architect.md"]:
             text = (agents / name).read_text(encoding="utf-8")
-            self.assertIn("<!-- ponytail:start -->", text, name)
-            self.assertIn("<!-- ponytail:end -->", text, name)
+            self.assertIn("<!-- ponytail-rules -->", text, name)
             self.assertIn("ESCALATE" if name == "builder.md" else "conclusion:", text, name)
         for name, model in [("quick.md", "haiku"), ("builder.md", "sonnet"), ("architect.md", "opus")]:
             self.assertIn(f"model: {model}", (agents / name).read_text(encoding="utf-8"))
@@ -284,13 +338,35 @@ class InstallTest(unittest.TestCase):
 
     def test_ponytail_kept_without_plugin(self):
         claude, _ = self.install({})
-        self.assertIn("lazy senior developer", (claude / "agents" / "builder.md").read_text(encoding="utf-8"))
+        for name in ["builder.md", "architect.md"]:
+            text = (claude / "agents" / name).read_text(encoding="utf-8")
+            self.assertIn("lazy senior developer", text)
+            self.assertNotIn("ponytail-rules", text)
+
+    def test_commands_rendered_for_script_install(self):
+        claude, _ = self.install({})
+        for name in ["router-stats.md", "router-learn.md"]:
+            text = (claude / "commands" / name).read_text(encoding="utf-8")
+            self.assertNotIn("CLAUDE_PLUGIN_ROOT", text)
+            self.assertIn("autorouter/run.py", text)
+            self.assertRegex(text.split("---")[1], r"allowed-tools: .*Bash\(")
+
+    def test_refuses_when_plugin_enabled(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        claude = Path(tmp.name)
+        (claude / "settings.json").write_text(json.dumps({"enabledPlugins": {"autorouter@exluna": True}}))
+        r = subprocess.run([sys.executable, str(ROOT / "install.py")], capture_output=True, text=True,
+                           env={**os.environ, "CLAUDE_HOME": str(claude)})
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("plugin is enabled", r.stderr)
 
     def test_ponytail_skipped_when_plugin_enabled(self):
         claude, out = self.install({"enabledPlugins": {"ponytail@ponytail": True}})
         for name in ["builder.md", "architect.md"]:
             text = (claude / "agents" / name).read_text(encoding="utf-8")
-            self.assertNotIn("ponytail:start", text)
+            self.assertNotIn("ponytail-rules", text)
+            self.assertNotIn("lazy senior developer", text)
             self.assertIn("## Report format", text)
             self.assertNotIn("\n\n\n", text)
         self.assertIn("Ponytail plugin detected", out)

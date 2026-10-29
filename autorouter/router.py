@@ -1,6 +1,7 @@
 """Tier selection: rules + learned weights + nearest neighbours + expected cost."""
 from __future__ import annotations
 
+import os
 import time
 from dataclasses import dataclass, field
 
@@ -178,21 +179,28 @@ def project_name(cwd) -> str | None:
     return (cwd or "").replace("\\", "/").rstrip("/").rsplit("/", 1)[-1] or None
 
 
+PLUGIN_NAME = "autorouter"
+
 INSTRUCTION = {
-    "quick": "delegate to subagent `quick`; relay its result in 1-2 sentences.",
-    "builder": "delegate to subagent `builder`; relay its report as is.",
-    "architect": "delegate to subagent `architect` with the full context it needs.",
+    "quick": "delegate to subagent `{agent}`; relay its result in 1-2 sentences.",
+    "builder": "delegate to subagent `{agent}`; relay its report as is.",
+    "architect": "delegate to subagent `{agent}` with the full context it needs.",
 }
+
+
+def agent_name(tier: str) -> str:
+    """Plugin installs namespace agents under the plugin name."""
+    return f"{PLUGIN_NAME}:{tier}" if os.environ.get("CLAUDE_PLUGIN_ROOT") else tier
 
 
 def context_line(d: Decision) -> str | None:
     """Short, stable-prefix instruction injected before the model sees the prompt."""
     if d.tier == "direct":
         return None
-    line = f"[router] tier={d.tier}: {INSTRUCTION[d.tier]}"
+    line = f"[router] tier={d.tier}: " + INSTRUCTION[d.tier].format(agent=agent_name(d.tier))
     if d.tier != "architect":
         line += " On `ESCALATE:`, re-delegate one tier up with its HANDOFF block."
     if d.capped:
-        line += " Opus daily budget reached: ask the user before using `architect`."
+        line += f" Opus daily budget reached: ask the user before using `{agent_name('architect')}`."
     return line
 

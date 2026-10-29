@@ -112,8 +112,21 @@ def on_stop(data: dict) -> None:
 HANDLERS = {"prompt": on_prompt, "agent": on_agent, "stop": on_stop}
 
 
+def script_install_active() -> bool:
+    """True when install.py registered hooks in the user's settings.json."""
+    claude = os.environ.get("CLAUDE_HOME") or os.path.join(os.path.expanduser("~"), ".claude")
+    try:
+        with open(os.path.join(claude, "settings.json"), encoding="utf-8") as f:
+            return "autorouter/run.py" in f.read()
+    except OSError:
+        return False
+
+
 def run(event: str) -> int:
     try:
+        if os.environ.get("CLAUDE_PLUGIN_ROOT") and script_install_active():
+            _read_stdin()
+            return 0  # the script install handles routing; do not route twice
         out = HANDLERS[event](_read_stdin())
         if out:
             print(json.dumps(out))

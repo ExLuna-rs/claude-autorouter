@@ -76,13 +76,36 @@ def strip_hooks(cfg: dict):
         cfg.pop("hooks", None)
 
 
-PONYTAIL = re.compile(r"\n?<!-- ponytail:start -->.*?<!-- ponytail:end -->\n?", re.S)
+PONYTAIL_SLOT = "<!-- ponytail-rules -->"
+PLUGIN_LAUNCH = 'node "${CLAUDE_PLUGIN_ROOT}/scripts/run.js"'
+COMMAND_TOOLS = {
+    "router-stats.md": "Bash({run} stats:*)",
+    "router-learn.md": "Bash({run} report:*), Bash({run} explain:*), Read, Edit",
+}
+
+
+def plugin_enabled(cfg: dict, name: str) -> bool:
+    plugins = cfg.get("enabledPlugins") or {}
+    return any(k.split("@")[0] == name and v for k, v in plugins.items())
 
 
 def ponytail_plugin_enabled(cfg: dict) -> bool:
     """The Ponytail plugin injects its rules into every subagent already."""
-    plugins = cfg.get("enabledPlugins") or {}
-    return any(k.split("@")[0] == "ponytail" and v for k, v in plugins.items())
+    return plugin_enabled(cfg, "ponytail")
+
+
+def render_agent(name: str, with_ponytail: bool) -> str:
+    text = (SRC / "agents" / name).read_text(encoding="utf-8")
+    rules = (SRC / "vendor" / "ponytail" / "RULES.md").read_text(encoding="utf-8") if with_ponytail else ""
+    text = text.replace(PONYTAIL_SLOT + "\n", rules)
+    return re.sub(r"\n{3,}", "\n\n", text)
+
+
+def render_command(name: str) -> str:
+    text = (SRC / "commands" / name).read_text(encoding="utf-8").replace(PLUGIN_LAUNCH, RUN)
+    tools = COMMAND_TOOLS[name].format(run=RUN)
+    text = re.sub(r"allowed-tools: .*\n", "", text)
+    return text.replace("\n---\n", f"\nallowed-tools: {tools}\n---\n", 1)
 
 
 def install(hygiene: bool):
@@ -92,14 +115,13 @@ def install(hygiene: bool):
 
     for d in ("agents", "commands"):
         (CLAUDE / d).mkdir(parents=True, exist_ok=True)
+    if plugin_enabled(cfg, "autorouter"):
+        sys.exit("The autorouter plugin is enabled. Use one install method: either run "
+                 "`/plugin uninstall autorouter@exluna`, or skip this script.")
     for name in AGENTS:
-        text = (SRC / "agents" / name).read_text(encoding="utf-8")
-        if strip_ponytail:
-            text = re.sub(r"\n{3,}", "\n\n", PONYTAIL.sub("\n", text))
-        (CLAUDE / "agents" / name).write_text(text, encoding="utf-8")
+        (CLAUDE / "agents" / name).write_text(render_agent(name, not strip_ponytail), encoding="utf-8")
     for name in COMMANDS:
-        text = (SRC / "commands" / name).read_text(encoding="utf-8")
-        (CLAUDE / "commands" / name).write_text(text.replace("{{RUN}}", RUN), encoding="utf-8")
+        (CLAUDE / "commands" / name).write_text(render_command(name), encoding="utf-8")
 
     DEST.mkdir(parents=True, exist_ok=True)
     if (DEST / "autorouter").exists():
