@@ -4,6 +4,8 @@
     python3 install.py               install / upgrade (idempotent)
     python3 install.py --hygiene     also deny reads of lockfiles, node_modules, build output
     python3 install.py --uninstall   remove hooks, agents, commands (keeps learned data)
+
+On Windows use `py install.py` (or `python install.py`).
 """
 from __future__ import annotations
 
@@ -17,7 +19,12 @@ from pathlib import Path
 SRC = Path(__file__).resolve().parent
 CLAUDE = Path(os.environ.get("CLAUDE_HOME", Path.home() / ".claude"))
 DEST = CLAUDE / "autorouter"
-RUN = "python3 ~/.claude/autorouter/run.py"
+# Absolute, forward-slash paths work in bash, zsh, cmd and PowerShell alike,
+# and pin the hooks to the interpreter that ran the installer
+# (python3 / python / py differ across platforms).
+PYTHON = Path(sys.executable).resolve().as_posix()
+RUN_PY = (DEST / "run.py").as_posix()
+RUN = f'"{PYTHON}" "{RUN_PY}"'
 MARK = "autorouter/run.py"
 LEGACY = ("autorouter.py", "route.py")  # hooks from the earlier single-file version
 
@@ -44,10 +51,10 @@ def _ours(entry) -> bool:
 
 
 def load_settings(path: Path) -> dict:
-    if not path.exists() or not path.read_text().strip():
+    if not path.exists() or not path.read_text(encoding="utf-8").strip():
         return {}
     try:
-        return json.loads(path.read_text())
+        return json.loads(path.read_text(encoding="utf-8"))
     except ValueError:
         sys.exit(f"error: {path} is not valid JSON; fix it first, nothing was changed.")
 
@@ -55,7 +62,7 @@ def load_settings(path: Path) -> dict:
 def save_settings(path: Path, cfg: dict):
     if path.exists():
         shutil.copy2(path, path.with_suffix(".json.bak"))
-    path.write_text(json.dumps(cfg, indent=2, ensure_ascii=False) + "\n")
+    path.write_text(json.dumps(cfg, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def strip_hooks(cfg: dict):
@@ -74,7 +81,8 @@ def install(hygiene: bool):
     for name in AGENTS:
         shutil.copy2(SRC / "agents" / name, CLAUDE / "agents" / name)
     for name in COMMANDS:
-        shutil.copy2(SRC / "commands" / name, CLAUDE / "commands" / name)
+        text = (SRC / "commands" / name).read_text(encoding="utf-8")
+        (CLAUDE / "commands" / name).write_text(text.replace("{{RUN}}", RUN), encoding="utf-8")
 
     DEST.mkdir(parents=True, exist_ok=True)
     if (DEST / "autorouter").exists():
@@ -117,7 +125,7 @@ def install(hygiene: bool):
         print(f"  note     {n}")
     if path.with_suffix(".json.bak").exists():
         print(f"  backup   {path.with_suffix('.json.bak')}")
-    print("Restart Claude Code, then try: python3 ~/.claude/autorouter/run.py explain \"your prompt\"")
+    print(f"Restart Claude Code, then try: {RUN} explain \"your prompt\"")
 
 
 def uninstall():

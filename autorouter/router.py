@@ -175,7 +175,7 @@ def _route(prompt, sig, cwd, conn, settings) -> Decision:
 
 
 def project_name(cwd) -> str | None:
-    return (cwd or "").rstrip("/").rsplit("/", 1)[-1] or None
+    return (cwd or "").replace("\\", "/").rstrip("/").rsplit("/", 1)[-1] or None
 
 
 INSTRUCTION = {

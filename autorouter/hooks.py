@@ -25,7 +25,10 @@ def _log_error(where: str):
 
 def _read_stdin() -> dict:
     try:
-        data = json.load(sys.stdin)
+        raw = sys.stdin.buffer.read() if hasattr(sys.stdin, "buffer") else sys.stdin.read()
+        if isinstance(raw, bytes):
+            raw = raw.decode("utf-8", errors="replace")
+        data = json.loads(raw)
         return data if isinstance(data, dict) else {}
     except ValueError:
         return {}

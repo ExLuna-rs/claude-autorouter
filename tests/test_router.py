@@ -76,6 +76,23 @@ class RulesTest(Isolated):
         self.assertEqual(self.tier("rename foo to bar", cwd="/work/secure/api"), "builder")
         self.assertEqual(self.tier("rename foo to bar", cwd="/work/other"), "quick")
 
+    def test_windows_paths(self):
+        cfg = config.home() / "config.json"
+        cfg.parent.mkdir(parents=True, exist_ok=True)
+        cfg.write_text(json.dumps({"projects": {"C:/Code/Secure": {"min_tier": "builder"}}}))
+        cwd = "C:\\Code\\Secure\\api" if os.name != "nt" else "c:\\code\\secure\\api"
+        self.assertEqual(self.tier("rename foo to bar", cwd=cwd.replace("c:", "C:") if os.name != "nt" else cwd),
+                         "builder")
+        self.assertEqual(router.project_name("C:\\Code\\Secure\\api\\"), "api")
+
+    def test_utf8_stdin(self):
+        r = subprocess.run([sys.executable, str(ROOT / "run.py"), "prompt"],
+                           input=json.dumps({"prompt": "conçois l'architecture d'un système distribué",
+                                             "session_id": "u"}, ensure_ascii=False).encode("utf-8"),
+                           capture_output=True, env=dict(os.environ), timeout=30)
+        self.assertEqual(r.returncode, 0)
+        self.assertIn(b"tier=architect", r.stdout)
+
     def test_context_line_is_short(self):
         for p, _ in self.CASES:
             line = router.context_line(router.route(p, cwd="/w"))
@@ -260,7 +277,17 @@ class InstallTest(unittest.TestCase):
                 self.assertEqual(r.returncode, 0, r.stderr)
             cfg = json.loads((claude / "settings.json").read_text())
             cmds = [h["command"] for e in cfg["hooks"]["UserPromptSubmit"] for h in e["hooks"]]
-            self.assertEqual(cmds, ["my-own-hook", "python3 ~/.claude/autorouter/run.py prompt"])
+            self.assertEqual(cmds[0], "my-own-hook")
+            self.assertEqual(len(cmds), 2)
+            self.assertTrue(cmds[1].endswith('autorouter/run.py" prompt'), cmds[1])
+            self.assertNotIn("\\", cmds[1])
+            stats_cmd = (claude / "commands" / "router-stats.md").read_text(encoding="utf-8")
+            self.assertNotIn("{{RUN}}", stats_cmd)
+            # The installed hook command actually runs.
+            r = subprocess.run(cmds[1].replace(" prompt", " explain \"find x\""), shell=True,
+                               capture_output=True, text=True, env=env)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertIn("tier", r.stdout)
             self.assertEqual(len(cfg["hooks"]["PostToolUse"]), 1)
             self.assertNotIn("CLAUDE_CODE_SUBAGENT_MODEL", cfg["env"])
             self.assertEqual(cfg["model"], "opus")  # user choice is kept

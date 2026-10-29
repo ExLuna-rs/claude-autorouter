@@ -57,13 +57,17 @@ Learning only from escalations would ratchet everything up to Opus, so the route
 
 ## Install
 
-Requires Claude Code and Python 3.9+.
+Requires Claude Code and Python 3.9+. Works on macOS, Linux and Windows.
 
 ```bash
 git clone https://github.com/ExLuna-rs/claude-autorouter.git
 cd claude-autorouter
 python3 install.py            # add --hygiene to block reads of bulky files
 ```
+
+On Windows (PowerShell), run the installer with `py install.py` (or `python install.py`).
+
+The hooks are pinned to the Python interpreter that ran the installer, written as an absolute path, so they work whether your shell knows `python3`, `python` or `py`. If you later remove that interpreter (a deleted venv, for example), run the installer again.
 
 The installer copies three agents and two commands into `~/.claude/`, installs the router in `~/.claude/autorouter/`, and registers three hooks in `~/.claude/settings.json` (a backup is saved as `settings.json.bak`). It is idempotent, so run it again to upgrade. It also:
 
@@ -78,6 +82,7 @@ Nothing to do: every prompt is routed. To see why a prompt goes where it goes:
 
 ```bash
 python3 ~/.claude/autorouter/run.py explain "migrate the auth module to OAuth"
+# Windows: py $HOME\.claude\autorouter\run.py explain "migrate the auth module to OAuth"
 ```
 
 Force a tier by starting a prompt with a prefix. The router also learns from these corrections:

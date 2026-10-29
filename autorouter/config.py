@@ -109,12 +109,19 @@ def model_weight(settings: Settings, model: str | None) -> float:
     return settings.model_weight.get("default", 5.0)
 
 
+def norm_path(path: str) -> str:
+    """Forward slashes, no trailing slash, case-folded on Windows."""
+    p = os.path.expanduser(path).replace("\\", "/").rstrip("/")
+    return p.lower() if os.name == "nt" else p
+
+
 def project_settings(settings: Settings, cwd: str | None) -> dict:
     if not cwd:
         return {}
+    cwd = norm_path(cwd)
     best, best_len = {}, -1
     for prefix, conf in settings.projects.items():
-        p = os.path.expanduser(prefix).rstrip("/")
+        p = norm_path(prefix)
         if (cwd == p or cwd.startswith(p + "/")) and len(p) > best_len:
             best, best_len = conf, len(p)
     return best
