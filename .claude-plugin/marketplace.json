@@ -12,8 +12,8 @@
     {
       "name": "ponytail",
       "source": {
-        "source": "github",
-        "repo": "DietrichGebert/ponytail",
+        "source": "url",
+        "url": "https://github.com/DietrichGebert/ponytail.git",
         "ref": "v5.3.3",
         "sha": "7801d061243d7b753bad0e0b3c057cd250b11755"
       },
