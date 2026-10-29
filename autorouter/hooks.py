@@ -149,6 +149,29 @@ def on_stop(data: dict) -> None:
         _add_cost(conn, decision["id"], cost)
 
 
+def write_band_snapshot():
+    """Leave a small JSON for the terminal band (hooks/band.tsx): the 24h tier
+    mix, escalations and the last route. Written atomically, read by the mod."""
+    settings = config.load()
+    since = time.time() - 86400
+    with store.connect() as conn:
+        shares = store.tier_shares(conn, since)
+        last = store.last_decision(conn)
+        esc = conn.execute("SELECT COUNT(*) FROM decisions WHERE ts>? AND escalations>0",
+                           (since,)).fetchone()[0]
+    snap = {
+        "total": sum(shares.get(t, 0) for t in config.DELEGATED),
+        "shares": {t: shares.get(t, 0) for t in config.DELEGATED},
+        "cap": settings.opus_daily_cap,
+        "escalations": esc,
+        "last": {"tier": last["tier"], "final": last["final_tier"] or last["tier"]} if last else None,
+    }
+    path = config.home() / "band.json"
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(snap), encoding="utf-8")
+    os.replace(tmp, path)
+
+
 HANDLERS = {"prompt": on_prompt, "agent-start": on_agent_start, "agent": on_agent,
             "subagent-stop": on_subagent_stop, "stop": on_stop}
 
@@ -195,6 +218,8 @@ def run(event: str) -> int:
             return 0  # the script install handles routing; do not route twice
         sync_runtime()
         out = HANDLERS[event](_read_stdin())
+        if event != "agent-start":
+            write_band_snapshot()
         if out:
             print(json.dumps(out))
     except Exception:  # noqa: BLE001 - never block Claude Code

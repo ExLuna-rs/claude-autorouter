@@ -139,19 +139,30 @@ Force a tier by starting a prompt with a prefix. The router also learns from the
 | `!architect` | Opus                                   |
 | `!direct`    | no delegation, the main session answers |
 
-### Status line
+### Band above the prompt (plugin install)
 
-A one-line view of the router, refreshed by Claude Code as you work:
+The plugin draws a row above the prompt, the way Ponytail does, without touching your status line:
+
+```
+⇄ router  ▶ architect opus-5-5  ▶ quick haiku-5-5  24h quick 50% builder 25% architect 25%/30%  last quick→builder  ↑1    Stats  Learn  Hide
+```
+
+- **`▶ tier model`**: subagents running now, with the **model they really run on** as Claude Code resolved it. If you see an older generation here, see [Check which models your tiers really use](#check-which-models-your-tiers-really-use).
+- **`24h`**: the share of each tier over the last 24 hours. The architect share is shown against its daily cap, in red once over it.
+- **`last`**: the tier chosen for your last prompt, and where it ended up if it escalated. **`↑n`**: escalations in the last 24 hours.
+- **Stats** and **Learn** run `/autorouter:router-stats` and `/autorouter:router-learn`. **Hide** hides the band; `/autorouter:band` toggles it.
+
+It shares the slot with other mods: Ponytail's band, if installed, is drawn just below it. The band needs a Claude Code version with plugin mods (terminal and desktop app).
+
+### Status line (script install, or without mods)
+
+The same information fits on one status line:
 
 ```
 router ▶ architect, quick │ 24h 37: quick 46% · builder 35% · architect 19%/30% │ last: quick→builder
 ```
 
-- **`▶ …`**: subagents running right now, including background ones (`idle` when none).
-- **`24h`**: tasks routed in the last 24 hours and the share of each tier. The architect share is shown against its daily cap.
-- **`last`**: the tier chosen for your last prompt, and where it ended up if it escalated.
-
-It is refreshed every 2 seconds (`refreshInterval`), because Claude Code does not otherwise re-run the status line while a subagent is working. The script install sets it up automatically if you have no status line. With the plugin, run `/autorouter:statusline` once: plugins cannot edit your settings, so the command shows the change and asks before writing it. If you already have a status line, the router's is available as `run.py statusline` to combine yourself.
+The script install sets it up when you have no status line, refreshed every 2 seconds (`refreshInterval`), since Claude Code does not otherwise re-run it while a subagent works. It never replaces a status line you already have. With the plugin, the band makes it unnecessary; `/autorouter:statusline` sets it up anyway if you prefer it.
 
 Slash commands:
 
@@ -204,7 +215,9 @@ Learned data stays in `~/.claude/autorouter/`. Delete that folder to erase it.
 ## Development
 
 ```bash
-python3 -m unittest discover -s tests
+python3 -m unittest discover -s tests     # router, hooks, installer
+claude plugin test .                      # the band (hooks/band.tsx)
+claude plugin validate .                  # manifests and the band's API use
 ```
 
 ## Related projects

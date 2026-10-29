@@ -298,6 +298,15 @@ class HookProcessTest(Isolated):
             r = self.run_hook("prompt", json.dumps({"prompt": p, "session_id": "p2"}))
             self.assertEqual((r.returncode, r.stdout), (0, ""))
 
+    def test_band_snapshot(self):
+        self.run_hook("prompt", json.dumps({"prompt": "find the auth middleware", "session_id": "b1", "cwd": "/w"}))
+        self.run_hook("prompt", json.dumps({"prompt": "design the plugin architecture", "session_id": "b1", "cwd": "/w"}))
+        snap = json.loads((config.home() / "band.json").read_text(encoding="utf-8"))
+        self.assertEqual(snap["total"], 2)
+        self.assertEqual(snap["shares"], {"quick": 1, "builder": 0, "architect": 1})
+        self.assertEqual(snap["last"], {"tier": "architect", "final": "architect"})
+        self.assertEqual(snap["cap"], 0.3)
+
     def test_hooks_never_fail(self):
         for event in ["prompt", "agent", "stop"]:
             for payload in ["", "{not json", "[]", json.dumps({"tool_input": "weird"})]:
